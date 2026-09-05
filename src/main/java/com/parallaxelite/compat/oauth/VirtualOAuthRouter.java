@@ -99,12 +99,13 @@ public final class VirtualOAuthRouter {
             return null;
         }
 
-        // Do not steal the browser flow unless the real phone has a browser that
-        // explicitly advertises AndroidX Auth Tab support. A normal ACTION_VIEW
-        // browser cannot return arbitrary virtual custom schemes to this SDK.
-        String authProvider = AuthTabCompat.findProvider(
+        // Facebook is handled by the SDK's private in-app WebView. Other OAuth
+        // providers keep the existing AndroidX Auth Tab path so their behavior is
+        // unchanged.
+        boolean facebookFlow = FacebookAuthHost.matches(authUri);
+        String authProvider = facebookFlow ? null : AuthTabCompat.findProvider(
                 ParallaxELiteInstaller.getContext(), authUri);
-        if (authProvider == null || authProvider.trim().isEmpty()) {
+        if (!facebookFlow && (authProvider == null || authProvider.trim().isEmpty())) {
             return null;
         }
 
@@ -116,7 +117,9 @@ public final class VirtualOAuthRouter {
         bridge.putExtra(EXTRA_REDIRECT_URI, redirectUri.toString());
         bridge.putExtra(EXTRA_VIRTUAL_PACKAGE, virtualPackage);
         bridge.putExtra(EXTRA_USER_ID, userId);
-        bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider);
+        if (authProvider != null) {
+            bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider);
+        }
         bridge.addFlags(source.getFlags() & (
                 Intent.FLAG_ACTIVITY_NEW_TASK
                         | Intent.FLAG_ACTIVITY_CLEAR_TOP
