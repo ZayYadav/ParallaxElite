@@ -147,6 +147,28 @@ public final class GCloudTwitterNativeCompat {
             login.setAccessible(true);
             login.invoke(null, caller, false, "", callback);
 
+            // With an already-active Twitter session the vendor callback can
+            // complete synchronously, so no Activity result will ever arrive to
+            // clear GCloud's lifecycle handler. Remove only that one known handler
+            // in this case to prevent a later false "activity destroyed without
+            // twitter callback" failure from overwriting the success.
+            try {
+                Method isChannelLogin =
+                        wrapperClass.getDeclaredMethod("isChannelLogin", boolean.class);
+                isChannelLogin.setAccessible(true);
+                if (Boolean.TRUE.equals(isChannelLogin.invoke(null, false))) {
+                    Class<?> observer = Class.forName(
+                            "com.itop.gcloud.msdk.TwitterLifeCycleObserver", true, loader);
+                    Field queueField = observer.getDeclaredField("mActivityMessageQueue");
+                    queueField.setAccessible(true);
+                    Object queue = queueField.get(null);
+                    if (queue instanceof android.util.SparseArray) {
+                        ((android.util.SparseArray<?>) queue).delete(1);
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+
             Log.i(TAG, "twitter gcloud native authorize started");
             return true;
         } catch (Throwable error) {
