@@ -49,10 +49,9 @@ public final class IAuthCompatPackageManagerProxy extends IPackageManagerProxy {
     @Override
     public void injectHook() {
         super.injectHook();
-        addMethodHook("resolveIntent",
-                new IFacebookWebPackageManagerProxy.ResolveIntentFacebookWebFirst());
-        addMethodHook("resolveService",
-                new IFacebookWebPackageManagerProxy.ResolveServiceFacebookWebFirst());
+        // Keep Facebook native/app-to-app discovery available. ExternalAuthRouter
+        // safely routes only real allow-listed provider Activities to Android.
+        // Browser/Auth-Tab remains the fallback when the provider SDK chooses web.
         addMethodHook("queryIntentActivities", new QueryExternalAuthActivities());
     }
 
