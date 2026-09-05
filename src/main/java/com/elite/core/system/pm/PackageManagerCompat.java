@@ -17,6 +17,7 @@ import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.Build;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -67,7 +68,7 @@ public class PackageManagerCompat {
             return null;
         }
 
-        PackageInfo pi = new PackageInfo();
+        PackageInfo pi = createPackageInfoTemplate(p, flags);
         pi.packageName = p.packageName;
         pi.versionCode = p.mVersionCode;
         pi.versionName = p.mVersionName;
@@ -299,6 +300,7 @@ public class PackageManagerCompat {
         ai.processName = BPackageManagerService.fixProcessName(p.packageName, ai.packageName);
         ai.publicSourceDir = sourceDir;
         ai.sourceDir = sourceDir;
+        recoverStoredSplitCodePaths(p, ai);
         ai.uid = p.mExtras.appId;
 //        ai.uid = baseApplication.uid;
 
@@ -336,6 +338,55 @@ public class PackageManagerCompat {
             return false;
         }
         return true;
+    }
+
+    private static PackageInfo createPackageInfoTemplate(BPackage p, int flags) {
+        PackageInfo template = null;
+        try {
+            if (p.installOption != null
+                    && p.installOption.isFlag(InstallOption.FLAG_SYSTEM)) {
+                template = EliteInstaller.getPackageManager().getPackageInfo(
+                        p.packageName, flags);
+            } else if (p.baseCodePath != null) {
+                template = EliteInstaller.getPackageManager().getPackageArchiveInfo(
+                        p.baseCodePath, flags);
+            }
+        } catch (Throwable ignored) {
+        }
+        return template == null ? new PackageInfo() : new PackageInfo(template);
+    }
+
+    private static void recoverStoredSplitCodePaths(BPackage p, ApplicationInfo info) {
+        if (p == null || info == null || p.installOption == null
+                || p.installOption.isFlag(InstallOption.FLAG_SYSTEM)) {
+            return;
+        }
+
+        // Preserve paths already recorded at install time.
+        if (info.splitSourceDirs != null && info.splitSourceDirs.length > 0) {
+            return;
+        }
+
+        try {
+            ArrayList<String> codePaths = BEnvironment.getAllDex(p.packageName);
+            if (codePaths.size() <= 1) {
+                return;
+            }
+            ArrayList<String> splits = new ArrayList<>();
+            for (String path : codePaths) {
+                if (path == null || path.equals(p.baseCodePath)
+                        || path.endsWith("/base.apk")) {
+                    continue;
+                }
+                splits.add(path);
+            }
+            if (!splits.isEmpty()) {
+                String[] values = splits.toArray(new String[0]);
+                info.splitSourceDirs = values;
+                info.splitPublicSourceDirs = values.clone();
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private static boolean isNormalInstallTimePermission(String permission) {
