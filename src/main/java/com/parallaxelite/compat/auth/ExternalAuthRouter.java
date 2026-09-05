@@ -198,28 +198,15 @@ public final class ExternalAuthRouter {
             return null;
         }
 
-        // Stock BGMI/GCloud starts TwitterWebActivity explicitly rather than
-        // dispatching the OAuth URL with ACTION_VIEW. If its launch extras already
-        // carry that URL, convert only that one URL to a real-provider ACTION_VIEW.
-        // Failure is intentionally non-destructive: returning null below lets the
-        // original TwitterWebActivity continue exactly as before.
-        Intent embeddedTwitterAuth = extractGCloudTwitterAuthIntent(source);
-        if (embeddedTwitterAuth != null) {
-            Intent nativeBridge = createTwitterNativeResultBridgeIntent(
-                    embeddedTwitterAuth, resultTo, resultWho, requestCode, virtualPackage);
-            if (nativeBridge != null) {
-                return nativeBridge;
-            }
-
-            // The GCloud wrapper already supplied the complete OAuth URL
-            // (client/state/PKCE/callback). If no official X/Twitter app can safely
-            // accept it, go directly to our private WebView instead of falling back
-            // to the guest's browser wrapper or Chrome.
-            Intent webBridge = createTwitterWebResultBridgeIntent(
-                    embeddedTwitterAuth, resultTo, resultWho, requestCode, virtualPackage);
-            if (webBridge != null) {
-                return webBridge;
-            }
+        // GCloud/IMSDK has its own TwitterWebActivity + JavaScript result
+        // contract (oauth token/secret/user data). ActivityManagerCommonProxy
+        // already gives GCloudTwitterNativeCompat the first chance to switch that
+        // vendor wrapper to its native Twitter Kit mode. If that native attempt is
+        // unavailable, preserve the original GCloud WebView exactly; routing this
+        // source through our generic OAuth WebView would break IMSDK's result
+        // contract.
+        if (isGCloudTwitterWebActivity(source)) {
+            return null;
         }
 
         if (isTwitterWebAuthIntent(source)) {
