@@ -60,6 +60,12 @@ public class BProcessManagerService implements ISystemService {
     }
 
     public ProcessRecord startProcessLocked(String packageName, String processName, int userId, int bpid, int callingPid) {
+        if (packageName == null || packageName.trim().isEmpty()) {
+            return null;
+        }
+        if (processName == null || processName.trim().isEmpty()) {
+            processName = packageName;
+        }
         ApplicationInfo info = BPackageManagerService.get().getApplicationInfo(packageName, 0, userId);
         if (info == null)
             return null;
@@ -253,11 +259,12 @@ public class BProcessManagerService implements ISystemService {
     public void onProcessDie(ProcessRecord record) {
         synchronized (mProcessLock) {
             record.kill();
-            Map<String, ProcessRecord> process = mProcessMap.get(record.buid);
+            int processMapUid = BUserHandle.getUid(record.userId, record.buid);
+            Map<String, ProcessRecord> process = mProcessMap.get(processMapUid);
             if (process != null) {
                 process.remove(record.processName);
                 if (process.isEmpty()) {
-                    mProcessMap.remove(record.buid);
+                    mProcessMap.remove(processMapUid);
                 }
             }
             mPidsSelfLocked.remove(record);
@@ -285,7 +292,8 @@ public class BProcessManagerService implements ISystemService {
                 for (ProcessRecord processRecord : mPidsSelfLocked) {
                     int appId1 = BUserHandle.getAppId(processRecord.buid);
                     if (appId == appId1) {
-                        mProcessMap.remove(processRecord.buid);
+                        mProcessMap.remove(
+                                BUserHandle.getUid(processRecord.userId, processRecord.buid));
                         tmp.remove(processRecord);
                         processRecord.kill();
                     }
