@@ -2,12 +2,15 @@ package com.elite.core;
 
 import android.content.Intent;
 import android.content.ComponentName;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Bundle;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import com.elite.EliteInstaller;
+import com.elite.app.BActivityThread;
 import com.elite.entity.pm.InstallResult;
 import com.elite.utils.auth.Auth;
 import org.lsposed.lsparanoid.Obfuscate;
@@ -39,6 +42,28 @@ public class GmsCore {
         GOOGLE_SERVICE.add("com.google.android.partnersetup");
         GOOGLE_SERVICE.add("com.google.android.setupwizard");
         GOOGLE_SERVICE.add("com.google.android.syncadapters.calendar");
+    }
+
+    public static ApplicationInfo applyVirtualAppGmsSafety(ApplicationInfo info) {
+        if (info == null || info.packageName == null || Build.VERSION.SDK_INT < 36) {
+            return info;
+        }
+        String virtualPackage = BActivityThread.getAppPackageName();
+        if (virtualPackage == null || !virtualPackage.equals(info.packageName)
+                || info.packageName.equals(EliteInstaller.getHostPkg())
+                || isGoogleAppOrService(info.packageName)) {
+            return info;
+        }
+
+        // Analytics is not required for Google authentication. Disabling its
+        // automatic bootstrap prevents Android 16 from sending a virtual package
+        // identity to a real GMS measurement service under the Loader UID.
+        Bundle metaData = info.metaData == null ? new Bundle() : new Bundle(info.metaData);
+        metaData.putBoolean("firebase_analytics_collection_deactivated", true);
+        metaData.putBoolean("firebase_analytics_collection_enabled", false);
+        metaData.putBoolean("google_analytics_adid_collection_enabled", false);
+        info.metaData = metaData;
+        return info;
     }
 
     public static boolean isGoogleAppOrService(String str) {
