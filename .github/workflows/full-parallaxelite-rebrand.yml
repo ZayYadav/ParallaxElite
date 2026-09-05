@@ -44,7 +44,7 @@ jobs:
               ".java", ".kt", ".aidl", ".gradle", ".properties", ".xml",
               ".yml", ".yaml", ".md", ".txt", ".cpp", ".cc", ".c",
               ".h", ".hpp", ".mk", ".cmake", ".json", ".pro", ".sh",
-              ".bat", ".py", ".cfg", ".ini"
+              ".bat", ".py", ".cfg", ".ini", ".bak"
           }
           TEXT_NAMES = {
               "Android.mk", "Application.mk", "CMakeLists.txt",
