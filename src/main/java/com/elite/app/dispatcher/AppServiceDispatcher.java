@@ -15,8 +15,7 @@ import com.elite.app.BActivityThread;
 import com.elite.entity.ServiceRecord;
 import com.elite.entity.UnbindRecord;
 import com.elite.proxy.record.ProxyServiceRecord;
-
-import static android.app.Service.START_NOT_STICKY;
+import com.elite.utils.compat.ScopedClassLoader;
 
 
 /**
@@ -56,13 +55,16 @@ public class AppServiceDispatcher {
 
         if (record.hasBinder(intent)) {
             if (record.isRebind()) {
-                service.onRebind(intent);
+                try (ScopedClassLoader ignored =
+                             ScopedClassLoader.enter(service.getClassLoader())) {
+                    service.onRebind(intent);
+                }
                 record.setRebind(false);
             }
             return record.getBinder(intent);
         }
 
-        try {
+        try (ScopedClassLoader ignored = ScopedClassLoader.enter(service.getClassLoader())) {
             IBinder iBinder = service.onBind(intent);
             record.addBinder(intent, iBinder);
             return iBinder;
@@ -72,20 +74,44 @@ public class AppServiceDispatcher {
         return null;
     }
 
-    public void onStartCommand(Intent proxyIntent) {
+    public int onStartCommand(Intent proxyIntent, int flags) {
+        if (proxyIntent == null) {
+            return Service.START_NOT_STICKY;
+        }
+
         ProxyServiceRecord stubRecord = ProxyServiceRecord.create(proxyIntent);
         if (stubRecord.mServiceIntent == null || stubRecord.mServiceInfo == null) {
-            return;
+            return Service.START_NOT_STICKY;
         }
 
         Service service = getOrCreateService(stubRecord);
         if (service == null) {
-            return;
+            return Service.START_NOT_STICKY;
         }
-        stubRecord.mServiceIntent.setExtrasClassLoader(service.getClassLoader());
 
-        ServiceRecord record = findRecord(stubRecord.mServiceIntent);
+        Intent guestIntent = stubRecord.mServiceIntent;
+        guestIntent.setExtrasClassLoader(service.getClassLoader());
+
+        ServiceRecord record = findRecord(guestIntent);
+        if (record == null) {
+            return Service.START_NOT_STICKY;
+        }
         record.setStartId(stubRecord.mStartId);
+
+        try (ScopedClassLoader ignored = ScopedClassLoader.enter(service.getClassLoader())) {
+            int result = service.onStartCommand(guestIntent, flags, stubRecord.mStartId);
+            // A sticky host proxy can be recreated with a null Intent, at which
+            // point the guest routing record is unavailable. Redeliver the last
+            // proxy Intent instead so the guest Service can be reconstructed.
+            if (result == Service.START_STICKY
+                    || result == Service.START_STICKY_COMPATIBILITY) {
+                return Service.START_REDELIVER_INTENT;
+            }
+            return result;
+        } catch (Throwable error) {
+            error.printStackTrace();
+            return Service.START_NOT_STICKY;
+        }
     }
 
     public void onDestroy() {
@@ -150,23 +176,34 @@ public class AppServiceDispatcher {
                 return;
             }
 
-            Service service = getOrCreateService(stubRecord);
-            if (service == null) {
+            ServiceRecord record = findRecord(intent);
+            if (record == null || record.getService() == null) {
                 return;
             }
-            stubRecord.mServiceIntent.setExtrasClassLoader(service.getClassLoader());
 
-            ServiceRecord record = findRecord(intent);
-            boolean destroy = unbindRecord.getStartId() == 0;
+            Service service = record.getService();
+            intent.setExtrasClassLoader(service.getClassLoader());
 
-            if (destroy || record.decreaseConnectionCount(intent)) {
-                if (destroy) {
+            // Android calls Service.onUnbind only when the final connection for
+            // this Intent is gone. Its boolean return controls a later onRebind.
+            boolean lastConnection = record.decreaseConnectionCount(intent);
+            if (!lastConnection) {
+                return;
+            }
+
+            boolean wantsRebind = false;
+            try (ScopedClassLoader ignored = ScopedClassLoader.enter(service.getClassLoader())) {
+                wantsRebind = service.onUnbind(intent);
+            }
+            record.setRebind(wantsRebind);
+
+            if (unbindRecord.getStartId() == 0) {
+                try (ScopedClassLoader ignored = ScopedClassLoader.enter(service.getClassLoader())) {
                     service.onDestroy();
-
-                    EliteInstaller.getBActivityManager().onServiceDestroy(proxyIntent, BActivityThread.getUserId());
-                    mService.remove(new Intent.FilterComparison(intent));
                 }
-                record.setRebind(true);
+                EliteInstaller.getBActivityManager().onServiceDestroy(
+                        proxyIntent, BActivityThread.getUserId());
+                mService.remove(new Intent.FilterComparison(intent));
             }
         } catch (Throwable e) {
             e.printStackTrace();
