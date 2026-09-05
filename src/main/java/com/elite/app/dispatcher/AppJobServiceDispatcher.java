@@ -1,123 +1,240 @@
 package com.elite.app.dispatcher;
 
-import android.app.Service;
+import android.app.job.IJobCallback;
 import android.app.job.JobParameters;
 import android.app.job.JobService;
-import android.content.Intent;
-import android.content.pm.ServiceInfo;
+import android.app.job.JobWorkItem;
 import android.content.res.Configuration;
-import android.os.Handler;
 import android.os.IBinder;
+import android.os.Parcel;
+import android.os.RemoteException;
 
-import com.elite.entity.JobRecord;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import black.android.app.job.BRJobParameters;
 import com.elite.EliteInstaller;
 import com.elite.app.BActivityThread;
-import com.elite.entity.ServiceRecord;
-import com.elite.entity.UnbindRecord;
-import com.elite.proxy.record.ProxyServiceRecord;
+import com.elite.entity.JobRecord;
+import com.elite.utils.compat.ScopedClassLoader;
+
 /**
- * Created by @jagdish_vip on 4/1/21.
- * * ∧＿∧
- * (`･ω･∥
- * 丶　つ０
- * しーＪ
- * 此处无Bug
+ * Dispatches host JobScheduler callbacks into virtual guest JobServices while
+ * translating the host-only job ID namespace back to the guest's original ID.
  */
 public class AppJobServiceDispatcher {
-    private static final AppJobServiceDispatcher sServiceDispatcher = new AppJobServiceDispatcher();
+    private static final AppJobServiceDispatcher sServiceDispatcher =
+            new AppJobServiceDispatcher();
     private final Map<Integer, JobRecord> mJobRecords = new HashMap<>();
 
     public static AppJobServiceDispatcher get() {
         return sServiceDispatcher;
     }
 
-    public boolean onStartJob(JobParameters params) {
+    public boolean onStartJob(JobParameters hostParams) {
+        if (hostParams == null) {
+            return false;
+        }
         try {
-            JobService jobService = getJobService(params.getJobId());
-            if (jobService == null) {
+            JobRecord record = getJobRecord(hostParams.getJobId());
+            if (record == null || record.mJobService == null) {
                 return false;
             }
-            return jobService.onStartJob(params);
-        } catch (Exception e) {
-            e.printStackTrace();
+            JobParameters guestParams = createGuestParameters(hostParams, record);
+            try (ScopedClassLoader ignored =
+                         ScopedClassLoader.enter(record.mJobService.getClassLoader())) {
+                return record.mJobService.onStartJob(guestParams);
+            }
+        } catch (Throwable error) {
+            error.printStackTrace();
+            return false;
         }
-        return false;
     }
 
-    public boolean onStopJob(JobParameters params) {
-        JobService jobService = getJobService(params.getJobId());
-        if (jobService == null) {
+    public boolean onStopJob(JobParameters hostParams) {
+        if (hostParams == null) {
             return false;
         }
 
-        boolean isStopJob = jobService.onStopJob(params);
-        jobService.onDestroy();
-
-        synchronized (mJobRecords) {
-            mJobRecords.remove(params.getJobId());
+        JobRecord record = getJobRecord(hostParams.getJobId());
+        if (record == null || record.mJobService == null) {
+            return false;
         }
-        return isStopJob;
+
+        boolean reschedule = false;
+        try {
+            JobParameters guestParams = createGuestParameters(hostParams, record);
+            try (ScopedClassLoader ignored =
+                         ScopedClassLoader.enter(record.mJobService.getClassLoader())) {
+                reschedule = record.mJobService.onStopJob(guestParams);
+            }
+        } catch (Throwable error) {
+            error.printStackTrace();
+        } finally {
+            destroyRecord(hostParams.getJobId(), record);
+        }
+        return reschedule;
     }
 
     public void onConfigurationChanged(Configuration newConfig) {
-        for (JobRecord jobRecord : mJobRecords.values()) {
-            if (jobRecord.mJobService != null) {
-                jobRecord.mJobService.onConfigurationChanged(newConfig);
+        for (JobRecord record : snapshotRecords()) {
+            if (record.mJobService == null) continue;
+            try (ScopedClassLoader ignored =
+                         ScopedClassLoader.enter(record.mJobService.getClassLoader())) {
+                record.mJobService.onConfigurationChanged(newConfig);
+            } catch (Throwable error) {
+                error.printStackTrace();
             }
         }
     }
 
     public void onDestroy() {
-        for (JobRecord jobRecord : mJobRecords.values()) {
-            if (jobRecord.mJobService != null) {
-                jobRecord.mJobService.onDestroy();
+        List<Map.Entry<Integer, JobRecord>> records;
+        synchronized (mJobRecords) {
+            records = new ArrayList<>(mJobRecords.entrySet());
+            mJobRecords.clear();
+        }
+        for (Map.Entry<Integer, JobRecord> entry : records) {
+            JobRecord record = entry.getValue();
+            if (record == null || record.mJobService == null) continue;
+            try (ScopedClassLoader ignored =
+                         ScopedClassLoader.enter(record.mJobService.getClassLoader())) {
+                record.mJobService.onDestroy();
+            } catch (Throwable error) {
+                error.printStackTrace();
             }
         }
     }
 
     public void onLowMemory() {
-        for (JobRecord jobRecord : mJobRecords.values()) {
-            if (jobRecord.mJobService != null) {
-                jobRecord.mJobService.onLowMemory();
+        for (JobRecord record : snapshotRecords()) {
+            if (record.mJobService == null) continue;
+            try (ScopedClassLoader ignored =
+                         ScopedClassLoader.enter(record.mJobService.getClassLoader())) {
+                record.mJobService.onLowMemory();
+            } catch (Throwable error) {
+                error.printStackTrace();
             }
         }
     }
 
     public void onTrimMemory(int level) {
-        for (JobRecord jobRecord : mJobRecords.values()) {
-            if (jobRecord.mJobService != null) {
-                jobRecord.mJobService.onTrimMemory(level);
+        for (JobRecord record : snapshotRecords()) {
+            if (record.mJobService == null) continue;
+            try (ScopedClassLoader ignored =
+                         ScopedClassLoader.enter(record.mJobService.getClassLoader())) {
+                record.mJobService.onTrimMemory(level);
+            } catch (Throwable error) {
+                error.printStackTrace();
             }
         }
     }
 
-    JobService getJobService(int jobId) {
+    private List<JobRecord> snapshotRecords() {
         synchronized (mJobRecords) {
-            JobRecord jobRecord = mJobRecords.get(jobId);
-            if (jobRecord != null && jobRecord.mJobService != null) {
-                return jobRecord.mJobService;
+            return new ArrayList<>(mJobRecords.values());
+        }
+    }
+
+    private void destroyRecord(int hostJobId, JobRecord record) {
+        synchronized (mJobRecords) {
+            mJobRecords.remove(hostJobId);
+        }
+        if (record.mJobService != null) {
+            try (ScopedClassLoader ignored =
+                         ScopedClassLoader.enter(record.mJobService.getClassLoader())) {
+                record.mJobService.onDestroy();
+            } catch (Throwable error) {
+                error.printStackTrace();
+            }
+        }
+    }
+
+    private JobRecord getJobRecord(int hostJobId) {
+        synchronized (mJobRecords) {
+            JobRecord cached = mJobRecords.get(hostJobId);
+            if (cached != null && cached.mJobService != null) {
+                return cached;
             }
 
             try {
-                JobRecord record = EliteInstaller.getBJobManager().queryJobRecord(BActivityThread.getAppProcessName(), jobId);
-                if (record == null) {
+                JobRecord record = EliteInstaller.getBJobManager().queryJobRecord(
+                        BActivityThread.getAppProcessName(), hostJobId);
+                if (record == null || record.mServiceInfo == null) {
                     return null;
                 }
 
-                record.mJobService = BActivityThread.currentActivityThread().createJobService(record.mServiceInfo);
+                record.mJobService = BActivityThread.currentActivityThread()
+                        .createJobService(record.mServiceInfo);
                 if (record.mJobService == null) {
                     return null;
                 }
 
-                mJobRecords.put(jobId, record);
-                return record.mJobService;
-            } catch (Throwable t) {
-                t.printStackTrace();
+                mJobRecords.put(hostJobId, record);
+                return record;
+            } catch (Throwable error) {
+                error.printStackTrace();
+                return null;
             }
-            return null;
+        }
+    }
+
+    private JobParameters createGuestParameters(
+            JobParameters hostParams, final JobRecord record) {
+        Parcel parcel = Parcel.obtain();
+        try {
+            hostParams.writeToParcel(parcel, 0);
+            parcel.setDataPosition(0);
+            JobParameters guestParams = JobParameters.CREATOR.createFromParcel(parcel);
+
+            IBinder originalCallbackBinder = BRJobParameters.get(guestParams).callback();
+            final IJobCallback originalCallback =
+                    IJobCallback.Stub.asInterface(originalCallbackBinder);
+            if (originalCallback != null) {
+                IJobCallback remappingCallback = new IJobCallback.Stub() {
+                    @Override
+                    public void acknowledgeStartMessage(int jobId, boolean ongoing)
+                            throws RemoteException {
+                        originalCallback.acknowledgeStartMessage(
+                                record.mHostJobId, ongoing);
+                    }
+
+                    @Override
+                    public void acknowledgeStopMessage(int jobId, boolean reschedule)
+                            throws RemoteException {
+                        originalCallback.acknowledgeStopMessage(
+                                record.mHostJobId, reschedule);
+                    }
+
+                    @Override
+                    public JobWorkItem dequeueWork(int jobId) throws RemoteException {
+                        return originalCallback.dequeueWork(record.mHostJobId);
+                    }
+
+                    @Override
+                    public boolean completeWork(int jobId, int workId)
+                            throws RemoteException {
+                        return originalCallback.completeWork(
+                                record.mHostJobId, workId);
+                    }
+
+                    @Override
+                    public void jobFinished(int jobId, boolean reschedule)
+                            throws RemoteException {
+                        originalCallback.jobFinished(
+                                record.mHostJobId, reschedule);
+                    }
+                };
+                BRJobParameters.get(guestParams)
+                        ._set_callback(remappingCallback.asBinder());
+            }
+
+            BRJobParameters.get(guestParams)._set_jobId(record.mGuestJobId);
+            return guestParams;
+        } finally {
+            parcel.recycle();
         }
     }
 }
