@@ -4,14 +4,14 @@ import java.net.URI;
 import java.util.Locale;
 
 /** Pure URL classifier kept separate so the app-to-app boundary is unit-testable. */
-final class TwitterOAuthUrl {
+public final class TwitterOAuthUrl {
     private static final int MAX_URL_LENGTH = 16_384;
     private static final String OAUTH2_AUTHORIZE_PATH = "/i/oauth2/authorize";
 
     private TwitterOAuthUrl() {
     }
 
-    static boolean isModernOAuth2Authorize(String value) {
+    public static boolean isModernOAuth2Authorize(String value) {
         if (value == null || value.isEmpty() || value.length() > MAX_URL_LENGTH) {
             return false;
         }
