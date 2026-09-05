@@ -1,6 +1,7 @@
 package com.elite.fake.service;
 
 import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
 import android.content.Context;
 import android.os.IBinder;
 
@@ -24,6 +25,7 @@ public class IJobServiceProxy extends BinderInvocationStub {
     private static final String TAG = "JobServiceStub";
     private static final String SERVICE_NAME = "jobscheduler";
     private static final int RESULT_FAILURE = 0;
+    private static final ThreadLocal<Boolean> INTERNAL_CANCEL = new ThreadLocal<>();
 
     public IJobServiceProxy() {
         super(BRServiceManager.get().getService(Context.JOB_SCHEDULER_SERVICE));
@@ -132,19 +134,26 @@ public class IJobServiceProxy extends BinderInvocationStub {
     public static class Cancel extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            if (Boolean.TRUE.equals(INTERNAL_CANCEL.get())) {
+                return method.invoke(who, args);
+            }
             try {
                 if (args == null || args.length == 0 || !(args[0] instanceof Integer)) {
                     Slog.w(TAG, "Cancel: Invalid arguments");
-                    return method.invoke(who, args);
+                    return defaultValue(method);
                 }
-                int jobId = (Integer) args[0];
-                String processName = BActivityThread.getAppConfig().processName;
-                int cancelledJobId = EliteInstaller.getBJobManager().cancel(processName, jobId);
-                args[0] = cancelledJobId;
+                int guestJobId = (Integer) args[0];
+                String processName = currentProcessName();
+                int hostJobId = EliteInstaller.getBJobManager().cancel(
+                        processName, guestJobId);
+                if (hostJobId < 0) {
+                    return defaultValue(method);
+                }
+                args[0] = hostJobId;
                 return method.invoke(who, args);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Slog.e(TAG, "Cancel: Error canceling job", e);
-                return method.invoke(who, args);
+                return defaultValue(method);
             }
         }
     }
@@ -154,12 +163,15 @@ public class IJobServiceProxy extends BinderInvocationStub {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             try {
-                String processName = BActivityThread.getAppConfig().processName;
-                EliteInstaller.getBJobManager().cancelAll(processName);
-                return method.invoke(who, args);
-            } catch (Exception e) {
-                Slog.e(TAG, "CancelAll: Error canceling all jobs", e);
-                return method.invoke(who, args);
+                int[] hostIds = EliteInstaller.getBJobManager()
+                        .cancelAll(currentProcessName());
+                for (int hostId : hostIds) {
+                    cancelHostJob(hostId);
+                }
+                return defaultValue(method);
+            } catch (Throwable e) {
+                Slog.e(TAG, "CancelAll: Error canceling virtual jobs", e);
+                return defaultValue(method);
             }
         }
     }
@@ -197,6 +209,42 @@ public class IJobServiceProxy extends BinderInvocationStub {
         }
     }
     
+    private static String currentProcessName() {
+        return BActivityThread.getAppConfig() == null
+                ? BActivityThread.getAppProcessName()
+                : BActivityThread.getAppConfig().processName;
+    }
+
+    private static void cancelHostJob(int hostJobId) {
+        JobScheduler scheduler = (JobScheduler) EliteInstaller.getContext()
+                .getSystemService(Context.JOB_SCHEDULER_SERVICE);
+        if (scheduler == null) {
+            return;
+        }
+        INTERNAL_CANCEL.set(Boolean.TRUE);
+        try {
+            scheduler.cancel(hostJobId);
+        } finally {
+            INTERNAL_CANCEL.remove();
+        }
+    }
+
+    private static Object defaultValue(Method method) {
+        if (method == null || method.getReturnType() == void.class) {
+            return null;
+        }
+        Class<?> type = method.getReturnType();
+        if (type == boolean.class) return false;
+        if (type == byte.class) return (byte) 0;
+        if (type == short.class) return (short) 0;
+        if (type == int.class) return 0;
+        if (type == long.class) return 0L;
+        if (type == float.class) return 0f;
+        if (type == double.class) return 0d;
+        if (type == char.class) return (char) 0;
+        return null;
+    }
+
     private static Object executeFallback(Object who, Method method, Object[] args, String operation) {
         try {
             return method.invoke(who, args);
