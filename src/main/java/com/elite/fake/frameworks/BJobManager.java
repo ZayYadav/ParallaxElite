@@ -46,12 +46,14 @@ public class BJobManager extends BlackManager<IBJobManagerService> {
         return null;
     }
 
-    public void cancelAll(String processName) {
+    public int[] cancelAll(String processName) {
         try {
-            getService().cancelAll(processName, BActivityThread.getUserId());
+            int[] ids = getService().cancelAll(processName, BActivityThread.getUserId());
+            return ids == null ? new int[0] : ids;
         } catch (RemoteException e) {
             e.printStackTrace();
         }
+        return new int[0];
     }
 
     public int cancel(String processName, int jobId) {
