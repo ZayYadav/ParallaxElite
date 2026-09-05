@@ -60,8 +60,8 @@ public final class GCloudTwitterNativeCompat {
             return false;
         }
 
-        Uri authorizeUri = safeTwitterUri(source.getStringExtra("url"));
-        if (authorizeUri == null || !hasOfficialTwitterApp()) {
+        Uri webLoginUri = safeHttpsUri(source.getStringExtra("url"));
+        if (webLoginUri == null || !hasOfficialTwitterApp()) {
             Log.i(TAG, "twitter gcloud native unavailable; using web fallback");
             return false;
         }
@@ -217,29 +217,17 @@ public final class GCloudTwitterNativeCompat {
         return false;
     }
 
-    private static Uri safeTwitterUri(String value) {
+    private static Uri safeHttpsUri(String value) {
         if (value == null || value.trim().isEmpty() || value.length() > 16_384) {
             return null;
         }
         try {
             Uri uri = Uri.parse(value.trim());
-            if (!"https".equalsIgnoreCase(uri.getScheme())) {
-                return null;
-            }
-            String host = uri.getHost();
-            if (host == null) {
-                return null;
-            }
-            host = host.toLowerCase(java.util.Locale.US);
-            if ("twitter.com".equals(host)
-                    || "x.com".equals(host)
-                    || host.endsWith(".twitter.com")
-                    || host.endsWith(".x.com")) {
-                return uri;
-            }
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null
+                    ? uri : null;
         } catch (Throwable ignored) {
+            return null;
         }
-        return null;
     }
 
     private static Throwable safeCause(Throwable error) {
