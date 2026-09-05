@@ -210,6 +210,16 @@ public final class ExternalAuthRouter {
             if (nativeBridge != null) {
                 return nativeBridge;
             }
+
+            // The GCloud wrapper already supplied the complete OAuth URL
+            // (client/state/PKCE/callback). If no official X/Twitter app can safely
+            // accept it, go directly to our private WebView instead of falling back
+            // to the guest's browser wrapper or Chrome.
+            Intent webBridge = createTwitterWebResultBridgeIntent(
+                    embeddedTwitterAuth, resultTo, resultWho, requestCode, virtualPackage);
+            if (webBridge != null) {
+                return webBridge;
+            }
         }
 
         if (isTwitterWebAuthIntent(source)) {
