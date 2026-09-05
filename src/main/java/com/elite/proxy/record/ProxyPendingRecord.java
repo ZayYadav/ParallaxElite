@@ -25,6 +25,9 @@ public class ProxyPendingRecord {
     }
 
     public static ProxyPendingRecord create(Intent intent) {
+        if (intent == null) {
+            return new ProxyPendingRecord(null, 0);
+        }
         int userId = intent.getIntExtra("_G_|_P_user_id_", 0);
         Intent target = intent.getParcelableExtra("_G_|_P_target_");
         return new ProxyPendingRecord(target, userId);
