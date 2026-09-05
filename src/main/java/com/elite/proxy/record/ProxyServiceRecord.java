@@ -38,6 +38,9 @@ public class ProxyServiceRecord {
     }
 
     public static ProxyServiceRecord create(Intent intent) {
+        if (intent == null) {
+            return new ProxyServiceRecord(null, null, null, 0, 0);
+        }
         Intent target = intent.getParcelableExtra("_G_|_target_");
         ServiceInfo serviceInfo = intent.getParcelableExtra("_G_|_service_info_");
         int userId = intent.getIntExtra("_G_|_user_id_", 0);
