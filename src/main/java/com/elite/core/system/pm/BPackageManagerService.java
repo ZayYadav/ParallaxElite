@@ -49,6 +49,7 @@ import com.elite.utils.FileUtils;
 import com.elite.utils.PermissionUtils;
 import com.elite.utils.Slog;
 import com.elite.utils.compat.PackageParserCompat;
+import com.elite.utils.compat.ReceiverCompat;
 import com.elite.utils.compat.XposedParserCompat;
 
 import static android.content.pm.PackageManager.MATCH_DIRECT_BOOT_UNAWARE;
@@ -86,8 +87,8 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
         filter.addAction("android.intent.action.PACKAGE_ADDED");
         filter.addAction("android.intent.action.PACKAGE_REMOVED");
         filter.addDataScheme("package");
-        EliteInstaller.getContext()
-                .registerReceiver(mPackageChangedHandler, filter);
+        ReceiverCompat.registerSystemReceiver(
+                EliteInstaller.getContext(), mPackageChangedHandler, filter);
     }
 
     private final BroadcastReceiver mPackageChangedHandler = new BroadcastReceiver() {
