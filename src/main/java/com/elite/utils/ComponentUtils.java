@@ -19,7 +19,8 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_INSTANCE;
 public class ComponentUtils {
 
     public static boolean isRequestInstall(Intent intent) {
-        return "application/vnd.android.package-archive".equals(intent.getType());
+        return intent != null
+                && "application/vnd.android.package-archive".equals(intent.getType());
     }
 
     public static boolean isSelf(Intent intent) {
@@ -29,6 +30,9 @@ public class ComponentUtils {
     }
 
     public static boolean isSelf(Intent[] intent) {
+        if (intent == null || intent.length == 0) {
+            return false;
+        }
         for (Intent intent1 : intent) {
             if (!isSelf(intent1)) {
                 return false;
@@ -52,12 +56,18 @@ public class ComponentUtils {
         if (info == null) {
             return null;
         }
+        if (TextUtils.isEmpty(info.authority)) {
+            return null;
+        }
         String[] authorities = info.authority.split(";");
         return authorities.length == 0 ? info.authority : authorities[0];
     }
 
     public static boolean intentFilterEquals(Intent a, Intent b) {
-        if (a != null && b != null) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        {
             if (!Objects.equals(a.getAction(), b.getAction())) {
                 return false;
             }
