@@ -99,13 +99,15 @@ public final class VirtualOAuthRouter {
             return null;
         }
 
-        // Facebook is handled by the SDK's private in-app WebView. Other OAuth
-        // providers keep the existing AndroidX Auth Tab path so their behavior is
-        // unchanged.
+        // Facebook and Twitter/X use private in-app WebView fallbacks. Twitter/X
+        // is still offered to the installed official app first by ExternalAuthRouter.
+        // Other OAuth providers keep the existing AndroidX Auth Tab path.
         boolean facebookFlow = FacebookAuthHost.matches(authUri);
-        String authProvider = facebookFlow ? null : AuthTabCompat.findProvider(
+        boolean twitterFlow = isTwitterHost(authUri);
+        String authProvider = (facebookFlow || twitterFlow) ? null : AuthTabCompat.findProvider(
                 ParallaxELiteInstaller.getContext(), authUri);
-        if (!facebookFlow && (authProvider == null || authProvider.trim().isEmpty())) {
+        if (!facebookFlow && !twitterFlow
+                && (authProvider == null || authProvider.trim().isEmpty())) {
             return null;
         }
 
