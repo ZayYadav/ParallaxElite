@@ -4,7 +4,7 @@ import java.util.Locale;
 import com.elite.EliteInstaller;
 
 public class ProxyManifest {
-    public static final int FREE_COUNT = 50;
+    public static final int FREE_COUNT = 25;
     public static final String PROXY_PACKAGE_NAME = "com.elite";
 
     public static boolean isProxy(String msg) {
