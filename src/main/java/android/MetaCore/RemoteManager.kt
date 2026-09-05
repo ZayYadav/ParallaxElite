@@ -119,7 +119,7 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
             sEnableDaemonService = false
             sHideRoot = false
             sHideXposed = false
-            if (serverMode == "maintenance" || serverMode == "offline") {
+            if (notifyUser && (serverMode == "maintenance" || serverMode == "offline")) {
                 showServerNotification("PARALLAX SDK", "SDK NOT ACTIVATED", "warning")
             }
             return
