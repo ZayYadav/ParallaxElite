@@ -60,6 +60,73 @@ public class INotificationManagerProxy extends BinderInvocationStub {
         return false;
     }
 
+    private static int findFirstIntParameter(Method method, Object[] args) {
+        if (method == null || args == null) return -1;
+        Class<?>[] types = method.getParameterTypes();
+        int count = Math.min(types.length, args.length);
+        for (int i = 0; i < count; i++) {
+            if ((types[i] == int.class || types[i] == Integer.class)
+                    && args[i] instanceof Number) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int findNearestIntBefore(
+            Method method, Object[] args, int beforeIndex) {
+        if (method == null || args == null || beforeIndex < 0) return -1;
+        Class<?>[] types = method.getParameterTypes();
+        int start = Math.min(Math.min(beforeIndex - 1, args.length - 1),
+                types.length - 1);
+        for (int i = start; i >= 0; i--) {
+            if ((types[i] == int.class || types[i] == Integer.class)
+                    && args[i] instanceof Number) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static String findNearestStringBefore(
+            Method method, Object[] args, int beforeIndex) {
+        if (method == null || args == null || beforeIndex < 0) return null;
+        Class<?>[] types = method.getParameterTypes();
+        int start = Math.min(Math.min(beforeIndex - 1, args.length - 1),
+                types.length - 1);
+        for (int i = start; i >= 0; i--) {
+            if (types[i] == String.class) {
+                return args[i] instanceof String ? (String) args[i] : null;
+            }
+        }
+        return null;
+    }
+
+    private static String findLastString(Object[] args) {
+        if (args == null) return null;
+        for (int i = args.length - 1; i >= 0; i--) {
+            if (args[i] instanceof String) {
+                return (String) args[i];
+            }
+        }
+        return null;
+    }
+
+    private static List<?> findParceledList(Object[] args) {
+        if (args == null) return null;
+        for (Object arg : args) {
+            if (arg == null || arg instanceof String) continue;
+            try {
+                List<?> list = BRParceledListSlice.get(arg).getList();
+                if (list != null) {
+                    return list;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
     @ProxyMethod("getNotificationChannel")
     public static class GetNotificationChannel extends MethodHook {
 
@@ -85,21 +152,14 @@ public class INotificationManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            String tag = (String) args[getTagIndex()];
-            int id = (int) args[getIdIndex()];
-            BNotificationManager.get().cancelNotificationWithTag(id, tag);
-            return 0;
-        }
-
-        public int getTagIndex() {
-            if (BuildCompat.isR()) {
-                return 2;
+            int idIndex = findFirstIntParameter(method, args);
+            if (idIndex < 0) {
+                return method.invoke(who, args);
             }
-            return 1;
-        }
-
-        public int getIdIndex() {
-            return getTagIndex() + 1;
+            int id = ((Number) args[idIndex]).intValue();
+            String tag = findNearestStringBefore(method, args, idIndex);
+            BNotificationManager.get().cancelNotificationWithTag(id, tag);
+            return null;
         }
     }
 
@@ -108,19 +168,18 @@ public class INotificationManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            String tag = (String) args[getTagIndex()];
-            int id = (int) args[getIdIndex()];
-            Notification notification = MethodParameterUtils.getFirstParam(args, Notification.class);
+            Notification notification =
+                    MethodParameterUtils.getFirstParam(args, Notification.class);
+            int notificationIndex =
+                    MethodParameterUtils.getIndex(args, Notification.class);
+            int idIndex = findNearestIntBefore(method, args, notificationIndex);
+            if (notification == null || idIndex < 0) {
+                return method.invoke(who, args);
+            }
+            int id = ((Number) args[idIndex]).intValue();
+            String tag = findNearestStringBefore(method, args, idIndex);
             BNotificationManager.get().enqueueNotificationWithTag(id, tag, notification);
-            return 0;
-        }
-
-        public int getTagIndex() {
-            return 2;
-        }
-
-        public int getIdIndex() {
-            return getTagIndex() + 1;
+            return null;
         }
     }
 
@@ -130,11 +189,17 @@ public class INotificationManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            List<?> list = BRParceledListSlice.get(args[1]).getList();
-            for (Object o : list) {
-                BNotificationManager.get().createNotificationChannel((NotificationChannel) o);
+            List<?> list = findParceledList(args);
+            if (list == null) {
+                return method.invoke(who, args);
             }
-            return 0;
+            for (Object o : list) {
+                if (o instanceof NotificationChannel) {
+                    BNotificationManager.get().createNotificationChannel(
+                            (NotificationChannel) o);
+                }
+            }
+            return null;
         }
     }
 
@@ -143,8 +208,12 @@ public class INotificationManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            BNotificationManager.get().deleteNotificationChannel((String) args[1]);
-            return 0;
+            String id = findLastString(args);
+            if (id == null) {
+                return method.invoke(who, args);
+            }
+            BNotificationManager.get().deleteNotificationChannel(id);
+            return null;
         }
     }
 
@@ -154,11 +223,17 @@ public class INotificationManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            List<?> list = BRParceledListSlice.get(args[1]).getList();
-            for (Object o : list) {
-                BNotificationManager.get().createNotificationChannelGroup((NotificationChannelGroup) o);
+            List<?> list = findParceledList(args);
+            if (list == null) {
+                return method.invoke(who, args);
             }
-            return 0;
+            for (Object o : list) {
+                if (o instanceof NotificationChannelGroup) {
+                    BNotificationManager.get().createNotificationChannelGroup(
+                            (NotificationChannelGroup) o);
+                }
+            }
+            return null;
         }
     }
 
@@ -167,8 +242,12 @@ public class INotificationManagerProxy extends BinderInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            BNotificationManager.get().deleteNotificationChannelGroup((String) args[1]);
-            return 0;
+            String id = findLastString(args);
+            if (id == null) {
+                return method.invoke(who, args);
+            }
+            BNotificationManager.get().deleteNotificationChannelGroup(id);
+            return null;
         }
     }
 
