@@ -443,3 +443,6 @@
 -keep class com.parallaxelite.utils.compat.VirtualPackageMetadataCompat { *; }
 -keep class com.parallaxelite.utils.compat.VirtualPermissionCompat { *; }
 
+
+# Public ParallaxELite single-import facade
+-keep class com.parallax.ELite { *; }
