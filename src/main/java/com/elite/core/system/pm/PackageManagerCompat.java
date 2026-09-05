@@ -16,6 +16,7 @@ import android.content.pm.ServiceInfo;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.Build;
+import android.os.Parcel;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -354,7 +355,17 @@ public class PackageManagerCompat {
             }
         } catch (Throwable ignored) {
         }
-        return template == null ? new PackageInfo() : new PackageInfo(template);
+        if (template == null) {
+            return new PackageInfo();
+        }
+        Parcel parcel = Parcel.obtain();
+        try {
+            template.writeToParcel(parcel, 0);
+            parcel.setDataPosition(0);
+            return PackageInfo.CREATOR.createFromParcel(parcel);
+        } finally {
+            parcel.recycle();
+        }
     }
 
     private static void recoverStoredSplitCodePaths(BPackage p, ApplicationInfo info) {
