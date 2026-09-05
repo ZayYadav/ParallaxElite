@@ -160,11 +160,35 @@ public class MethodParameterUtils {
         return obj != null ? obj.toString() : null;
     }
     
-    public static int toInt(Object obj){
-        if(obj instanceof Long){
-            return ((Long) obj).intValue();
+    public static int toInt(Object obj) {
+        if (obj instanceof Number) {
+            return ((Number) obj).intValue();
         }
-        return (int)obj;
+        return 0;
+    }
+
+    public static int getFirstNumberAsInt(Object[] args, int fallback) {
+        if (args == null) {
+            return fallback;
+        }
+        for (Object arg : args) {
+            if (arg instanceof Number) {
+                return ((Number) arg).intValue();
+            }
+        }
+        return fallback;
+    }
+
+    public static int getNumberAsIntAfter(Object[] args, int afterIndex, int fallback) {
+        if (args == null) {
+            return fallback;
+        }
+        for (int i = Math.max(0, afterIndex + 1); i < args.length; i++) {
+            if (args[i] instanceof Number) {
+                return ((Number) args[i]).intValue();
+            }
+        }
+        return fallback;
     }
     
 
