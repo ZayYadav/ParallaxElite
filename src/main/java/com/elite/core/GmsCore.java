@@ -1,8 +1,11 @@
 package com.elite.core;
 
 import android.content.Intent;
+import android.content.ComponentName;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import com.elite.EliteInstaller;
 import com.elite.entity.pm.InstallResult;
@@ -52,6 +55,38 @@ public class GmsCore {
         return false;
     }
     
+    /**
+     * Android 16 runtime guard: analytics/measurement is not an authentication
+     * dependency and must not be sent to real GMS under a virtual package identity.
+     */
+    public static boolean isMeasurementIntent(Intent intent) {
+        if (intent == null || Build.VERSION.SDK_INT < 36) return false;
+
+        ComponentName component = intent.getComponent();
+        if (component != null && isMeasurementName(component.getClassName())) {
+            return true;
+        }
+
+        String action = intent.getAction();
+        if (action == null) return false;
+        String lower = action.toLowerCase(Locale.US);
+        if (!isMeasurementName(lower)) return false;
+
+        String targetPackage = component != null ? component.getPackageName() : intent.getPackage();
+        return targetPackage == null
+                || GMS_PKG.equals(targetPackage)
+                || action.startsWith("com.google.android.gms.measurement");
+    }
+
+    private static boolean isMeasurementName(String value) {
+        if (value == null) return false;
+        String lower = value.toLowerCase(Locale.US);
+        return lower.startsWith("com.google.android.gms.measurement.")
+                || lower.contains("appmeasurement")
+                || lower.contains("firebaseanalytics")
+                || lower.contains("measurementdynamite");
+    }
+
     public static boolean isGmsIntent(Intent intent) {
 		if (intent == null) return false;
 		String action = intent.getAction();
