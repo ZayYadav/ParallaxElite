@@ -3,3 +3,6 @@
 -keep class black.** {*; }
 -keep class android.** {*; }
 -keep class com.android.** {*; }
+
+# Public ParallaxELite single-import facade
+-keep class com.parallax.ELite { *; }
