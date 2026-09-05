@@ -1,6 +1,5 @@
 package com.elite.utils;
 
-import android.os.Build;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -32,11 +31,17 @@ public class NativeUtils {
             nativeLibDir.mkdirs();
         }
         try (ZipFile zipfile = new ZipFile(apk.getAbsolutePath())) {
-            if (findAndCopyNativeLib(zipfile, Build.CPU_ABI, nativeLibDir)) {
-                return;
+            for (String abi : AbiUtils.getProcessSupportedAbis()) {
+                if (abi != null && findAndCopyNativeLib(zipfile, abi, nativeLibDir)) {
+                    return;
+                }
             }
 
-            findAndCopyNativeLib(zipfile, "armeabi", nativeLibDir);
+            // armeabi is a legacy 32-bit fallback only. Never place it into a
+            // 64-bit guest process where the linker cannot load it.
+            if (!AbiUtils.isProcess64Bit()) {
+                findAndCopyNativeLib(zipfile, "armeabi", nativeLibDir);
+            }
         } finally {
             Log.d(TAG, "Done! +" + (System.currentTimeMillis() - startTime) + "ms");
         }
