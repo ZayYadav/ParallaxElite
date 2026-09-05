@@ -134,7 +134,7 @@ jobs:
           grep -q 'package com.parallaxelite'             src/main/java/com/parallaxelite/ParallaxELiteInstaller.java
           grep -q 'class ParallaxELiteInstaller'             src/main/java/com/parallaxelite/ParallaxELiteInstaller.java
 
-          grep -Eq 'namespace[[:space:]]+["'\'' ]?com\.parallaxelite' build.gradle
+          grep -q 'namespace "com.parallaxelite"' build.gradle
           grep -q 'ParallaxELiteCore' src/main/cpp/Android.mk
           grep -q 'ParallaxELite' settings.gradle
 
