@@ -429,3 +429,17 @@
 
 # KEEP ATTRIBUTES FOR GENERIC TYPES (ClassCastException fix)
 -keepattributes Signature, *Annotation*, Exceptions, InnerClasses, EnclosingMethod
+
+############################################
+# MODERN SOCIAL AUTH / ANDROID 16
+############################################
+# Host-side OAuth/provider trampolines are referenced from the manifest and
+# provider/session classes exchange callbacks reflectively across process edges.
+-keep class com.elite.compat.auth.** { *; }
+-keep class com.elite.compat.oauth.** { *; }
+-keep class com.elite.fake.service.IAuthCompatPackageManagerProxy { *; }
+-keep class com.elite.fake.service.ITwitterAwareAccountManagerProxy { *; }
+-keep class com.elite.utils.compat.IntentRedirectCompat { *; }
+-keep class com.elite.utils.compat.VirtualPackageMetadataCompat { *; }
+-keep class com.elite.utils.compat.VirtualPermissionCompat { *; }
+
