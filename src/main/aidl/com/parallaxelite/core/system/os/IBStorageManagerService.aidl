@@ -1,5 +1,5 @@
 // IBStorageManagerService.aidl
-package com.elite.core.system.os;
+package com.parallaxelite.core.system.os;
 
 import android.os.storage.StorageVolume;
 import java.lang.String;

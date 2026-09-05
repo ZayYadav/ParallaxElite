@@ -1,4 +1,4 @@
-package com.elite.core.system.accounts;
+package com.parallaxelite.core.system.accounts;
 
 import android.accounts.IAccountManagerResponse;
 import android.accounts.Account;

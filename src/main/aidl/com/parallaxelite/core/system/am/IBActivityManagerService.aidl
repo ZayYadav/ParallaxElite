@@ -1,5 +1,5 @@
 // IBActivityManagerService.aidl
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.content.Intent;
 import android.content.ComponentName;
@@ -8,12 +8,12 @@ import android.content.pm.ProviderInfo;
 import android.os.IBinder;
 import java.lang.String;
 import android.app.IServiceConnection;
-import com.elite.entity.AppConfig;
-import com.elite.entity.UnbindRecord;
+import com.parallaxelite.entity.AppConfig;
+import com.parallaxelite.entity.UnbindRecord;
 import android.os.Bundle;
-import com.elite.entity.am.RunningAppProcessInfo;
-import com.elite.entity.am.PendingResultData;
-import com.elite.entity.am.RunningServiceInfo;
+import com.parallaxelite.entity.am.RunningAppProcessInfo;
+import com.parallaxelite.entity.am.PendingResultData;
+import com.parallaxelite.entity.am.RunningServiceInfo;
 
 // Declare any non-default types here with import statements
 

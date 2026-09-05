@@ -1,5 +1,5 @@
 // IBNotificationManagerService.aidl
-package com.elite.core.system.notification;
+package com.parallaxelite.core.system.notification;
 
 // Declare any non-default types here with import statements
 import android.app.Notification;

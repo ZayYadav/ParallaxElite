@@ -1,8 +1,8 @@
 // IFakeLocationManager.aidl
-package com.elite.core.system.location;
+package com.parallaxelite.core.system.location;
 
-import com.elite.entity.location.BLocation;
-import com.elite.entity.location.BCell;
+import com.parallaxelite.entity.location.BLocation;
+import com.parallaxelite.entity.location.BCell;
 
 import java.util.List;
 

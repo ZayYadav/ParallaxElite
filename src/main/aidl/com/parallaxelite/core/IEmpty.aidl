@@ -1,5 +1,5 @@
 // IBActivityThread.aidl
-package com.elite.core;
+package com.parallaxelite.core;
 
 // Declare any non-default types here with import statements
 

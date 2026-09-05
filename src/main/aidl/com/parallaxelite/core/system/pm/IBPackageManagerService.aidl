@@ -1,5 +1,5 @@
 // IBPackageManagerService.aidl
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 // Declare any non-default types here with import statements
 import android.content.pm.ApplicationInfo;
@@ -11,9 +11,9 @@ import android.content.pm.ProviderInfo;
 import android.content.Intent;
 import android.content.ComponentName;
 import java.util.List;
-import com.elite.entity.pm.InstallResult;
-import com.elite.entity.pm.InstallOption;
-import com.elite.entity.pm.InstalledPackage;
+import com.parallaxelite.entity.pm.InstallResult;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.entity.pm.InstalledPackage;
 
 
 interface IBPackageManagerService {

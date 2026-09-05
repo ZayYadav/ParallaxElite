@@ -1,12 +1,12 @@
 // IBJobManagerService.aidl
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.content.Intent;
 import android.content.ComponentName;
 import android.os.IBinder;
 import java.lang.String;
 import android.app.job.JobInfo;
-import com.elite.entity.JobRecord;
+import com.parallaxelite.entity.JobRecord;
 
 // Declare any non-default types here with import statements
 

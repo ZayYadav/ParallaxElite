@@ -1,5 +1,5 @@
 // IRequestPermissionsResult.aidl
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 interface IRequestPermissionsResult {
     boolean onResult(int requestCode,in String[] permissions,in int[] grantResults);

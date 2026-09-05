@@ -1,5 +1,5 @@
 // IBActivityThread.aidl
-package com.elite.core;
+package com.parallaxelite.core;
 
 // Declare any non-default types here with import statements
 
@@ -9,7 +9,7 @@ import android.content.Intent;
 import java.util.List;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ActivityInfo;
-import com.elite.entity.am.ReceiverData;
+import com.parallaxelite.entity.am.ReceiverData;
 
 interface IBActivityThread {
     IBinder getActivityThread();

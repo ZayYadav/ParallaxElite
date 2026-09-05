@@ -1,8 +1,8 @@
 // IBPackageInstallerService.aidl
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
-import com.elite.core.system.pm.BPackageSettings;
-import com.elite.entity.pm.InstallOption;
+import com.parallaxelite.core.system.pm.BPackageSettings;
+import com.parallaxelite.entity.pm.InstallOption;
 
 // Declare any non-default types here with import statements
 

@@ -1,5 +1,5 @@
 // BPackageSettings.aidl
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 // Declare any non-default types here with import statements
 
