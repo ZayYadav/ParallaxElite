@@ -50,7 +50,7 @@ public class IAppOpsManagerProxy extends BinderInvocationStub {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         MethodParameterUtils.replaceFirstAppPkg(args);
-        MethodParameterUtils.replaceLastUid(args);
+        MethodParameterUtils.replaceAllVirtualUids(args);
         return super.invoke(proxy, method, args);
     }
 
@@ -63,7 +63,7 @@ public class IAppOpsManagerProxy extends BinderInvocationStub {
     public static class NoteProxyOperation extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            return AppOpsManager.MODE_ALLOWED;
+            return method.invoke(who, args);
         }
     }
 
@@ -71,8 +71,7 @@ public class IAppOpsManagerProxy extends BinderInvocationStub {
     public static class CheckPackage extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            // todo
-            return AppOpsManager.MODE_ALLOWED;
+            return method.invoke(who, args);
         }
     }
 
@@ -80,7 +79,7 @@ public class IAppOpsManagerProxy extends BinderInvocationStub {
     public static class CheckOperation extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            MethodParameterUtils.replaceLastUid(args);
+            MethodParameterUtils.replaceAllVirtualUids(args);
             return method.invoke(who, args);
         }
     }
