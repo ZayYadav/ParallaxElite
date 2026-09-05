@@ -99,10 +99,21 @@ public class IPackageManagerProxy extends BinderInvocationStub {
     public static class ResolveIntent extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            Intent intent = (Intent) args[0];
-            String resolvedType = (String) args[1];
-            int flags = Integer.parseInt(args[2] + "");
-            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveIntent(intent, resolvedType, flags, BActivityThread.getUserId());
+            Intent intent = MethodParameterUtils.getFirstParam(args, Intent.class);
+            if (intent == null) {
+                return method.invoke(who, args);
+            }
+            int intentIndex = MethodParameterUtils.getIndex(args, Intent.class);
+            String resolvedType = null;
+            for (int i = intentIndex + 1; i < args.length; i++) {
+                if (args[i] instanceof String) {
+                    resolvedType = (String) args[i];
+                    break;
+                }
+            }
+            int flags = MethodParameterUtils.getNumberAsIntAfter(args, intentIndex, 0);
+            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveIntent(
+                    intent, resolvedType, flags, BActivityThread.getUserId());
             if (resolveInfo != null) {
                 return resolveInfo;
             }
@@ -131,10 +142,21 @@ public class IPackageManagerProxy extends BinderInvocationStub {
     public static class ResolveService extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            Intent intent = (Intent) args[0];
-            String resolvedType = (String) args[1];
-            int flags = Integer.parseInt(args[2] + "");
-            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveService(intent, flags, resolvedType, BActivityThread.getUserId());
+            Intent intent = MethodParameterUtils.getFirstParam(args, Intent.class);
+            if (intent == null) {
+                return method.invoke(who, args);
+            }
+            int intentIndex = MethodParameterUtils.getIndex(args, Intent.class);
+            String resolvedType = null;
+            for (int i = intentIndex + 1; i < args.length; i++) {
+                if (args[i] instanceof String) {
+                    resolvedType = (String) args[i];
+                    break;
+                }
+            }
+            int flags = MethodParameterUtils.getNumberAsIntAfter(args, intentIndex, 0);
+            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveService(
+                    intent, flags, resolvedType, BActivityThread.getUserId());
             if (resolveInfo != null) {
                 return resolveInfo;
             }
@@ -302,8 +324,21 @@ public class IPackageManagerProxy extends BinderInvocationStub {
     public static class QueryContentProviders extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            int flags = MethodParameterUtils.toInt(args[2]);
-            List<ProviderInfo> providers = EliteInstaller.getBPackageManager().queryContentProviders(BActivityThread.getAppProcessName(), BActivityThread.getBUid(), flags, BActivityThread.getUserId());
+            String processName = args != null && args.length > 0 && args[0] instanceof String
+                    ? (String) args[0] : null;
+            int uid = args != null && args.length > 1 && args[1] instanceof Number
+                    ? ((Number) args[1]).intValue() : BActivityThread.getBUid();
+            int flags = args != null && args.length > 2 && args[2] instanceof Number
+                    ? ((Number) args[2]).intValue() : 0;
+
+            // Preserve the process requested by the guest. Passing null has the
+            // Android PackageManager meaning of "all matching providers".
+            List<ProviderInfo> providers = EliteInstaller.getBPackageManager()
+                    .queryContentProviders(
+                            processName,
+                            uid,
+                            flags,
+                            BActivityThread.getUserId());
             return ParceledListSliceCompat.create(providers);
         }
     }
@@ -314,8 +349,9 @@ public class IPackageManagerProxy extends BinderInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             Intent intent = MethodParameterUtils.getFirstParam(args, Intent.class);
             String type = MethodParameterUtils.getFirstParam(args, String.class);
-            Integer flags = MethodParameterUtils.getFirstParam(args, Integer.class);
-            int flagValue = flags != null ? flags.intValue() : 0;
+            int intentIndex = MethodParameterUtils.getIndex(args, Intent.class);
+            int flagValue = MethodParameterUtils.getNumberAsIntAfter(
+                    args, intentIndex, 0);
             List<ResolveInfo> resolves = EliteInstaller.getBPackageManager().queryBroadcastReceivers(intent, flagValue, type, BActivityThread.getUserId());
             Slog.d(TAG, "queryIntentReceivers: " + resolves);
 
