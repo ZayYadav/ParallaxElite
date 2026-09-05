@@ -112,10 +112,12 @@ public final class VirtualOAuthBridgeActivity extends Activity {
 
         authUri = safeHttpsUri(authUrl);
         Uri redirectUri = safeCustomRedirectUri(redirectUriValue);
+        boolean facebookCandidate = FacebookAuthHost.matches(authUri);
+        boolean twitterCandidate = isTwitterHost(authUri);
         if (authUri == null || !VirtualOAuthRouter.isTrustedAuthUri(authUri)
                 || redirectUri == null || virtualPackage == null
                 || virtualPackage.trim().isEmpty() || userId < 0
-                || (!FacebookAuthHost.matches(authUri)
+                || (!facebookCandidate && !twitterCandidate
                     && (authProvider == null || authProvider.trim().isEmpty()))) {
             if (resultBridgeMode) {
                 completeBridgeResult(RESULT_CANCELED, null);
@@ -126,11 +128,11 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         }
 
         expectedRedirectUri = redirectUri;
-        facebookFlow = isFacebookHost(authUri);
-        twitterFlow = isTwitterHost(authUri);
+        facebookFlow = facebookCandidate;
+        twitterFlow = twitterCandidate;
         legacyTwitterFlow = twitterFlow && hasQueryParameter(authUri, "oauth_token");
         if (!redirectResolvesToVirtualPackage(redirectUri)
-                || (!facebookFlow
+                || (!facebookFlow && !twitterFlow
                     && !AuthTabCompat.isSupportedProvider(this, authProvider, authUri))) {
             diagnostic("setup_rejected", false, false, false, false, false);
             facebookDiagnostic("setup_rejected", RESULT_CANCELED, null, null, false);
@@ -156,6 +158,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                         authUri, expectedRedirectUri, virtualPackage, userId);
                 facebookDiagnostic("session_started", RESULT_CANCELED, null, null, false);
                 launchFacebookWebView(authUri, expectedRedirectUri);
+            } else if (twitterFlow) {
+                diagnostic("webview_fallback_launch",
+                        false, false, false, false, false);
+                launchTwitterWebView(authUri, expectedRedirectUri);
             } else {
                 launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
             }
@@ -174,6 +180,25 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         } catch (Throwable ignored) {
             facebookDiagnostic("webview_launch_failed", RESULT_CANCELED, null, null, false);
             FacebookOAuthSessionStore.clear(virtualPackage, userId);
+            if (resultBridgeMode) {
+                completeBridgeResult(RESULT_CANCELED, null);
+            } else {
+                finish();
+            }
+        }
+    }
+
+    private void launchTwitterWebView(Uri authUri, Uri redirectUri) {
+        try {
+            Intent webViewIntent = new Intent(this, TwitterWebViewActivity.class);
+            webViewIntent.putExtra(
+                    TwitterWebViewActivity.EXTRA_AUTH_URL, authUri.toString());
+            webViewIntent.putExtra(
+                    TwitterWebViewActivity.EXTRA_REDIRECT_URI, redirectUri.toString());
+            startActivityForResult(webViewIntent, REQUEST_AUTH_TAB);
+        } catch (Throwable ignored) {
+            diagnostic("webview_fallback_failed",
+                    false, false, false, false, false);
             if (resultBridgeMode) {
                 completeBridgeResult(RESULT_CANCELED, null);
             } else {
