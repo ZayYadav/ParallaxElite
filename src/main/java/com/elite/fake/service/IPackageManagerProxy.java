@@ -41,6 +41,7 @@ import com.elite.utils.Reflector;
 import com.elite.utils.Slog;
 import com.elite.utils.compat.BuildCompat;
 import com.elite.utils.compat.ParceledListSliceCompat;
+import com.elite.utils.compat.VirtualPermissionCompat;
 
 /**
  * Created by Milk on 3/30/21.
@@ -104,6 +105,23 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveIntent(intent, resolvedType, flags, BActivityThread.getUserId());
             if (resolveInfo != null) {
                 return resolveInfo;
+            }
+            return method.invoke(who, args);
+        }
+    }
+
+    @ProxyMethod("checkPermission")
+    public static class CheckPermission extends MethodHook {
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            String permission = args != null && args.length > 0 && args[0] instanceof String
+                    ? (String) args[0] : null;
+            String requestedPackage = args != null && args.length > 1
+                    && args[1] instanceof String ? (String) args[1] : null;
+            if (requestedPackage != null
+                    && VirtualPermissionCompat.shouldGrantDeclaredNetworkPermission(
+                    permission, requestedPackage)) {
+                return PackageManager.PERMISSION_GRANTED;
             }
             return method.invoke(who, args);
         }
