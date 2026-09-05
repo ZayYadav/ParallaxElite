@@ -65,6 +65,7 @@ import com.elite.utils.Slog;
 import com.elite.utils.compat.ActivityManagerCompat;
 import com.elite.utils.compat.BuildCompat;
 import com.elite.utils.compat.ParceledListSliceCompat;
+import com.elite.utils.compat.ReceiverCompat;
 import com.elite.utils.compat.TaskDescriptionCompat;
 import com.elite.utils.compat.VirtualPermissionCompat;
 
@@ -541,53 +542,85 @@ public class IActivityManagerProxy extends ClassInvocationStub {
         }
     }
 
-    // android 10
-    @ProxyMethod("registerReceiverWithFeature")
-    public static class RegisterReceiverWithFeature extends RegisterReceiver {
-
-    }
-
-    @ProxyMethod("registerReceiver")
+    /**
+     * registerReceiver signatures changed repeatedly from Android 10 through 16.
+     * Locate receiver/user/flags by runtime type instead of fixed array offsets.
+     */
+    @ProxyMethods({"registerReceiver", "registerReceiverWithFeature"})
     public static class RegisterReceiver extends MethodHook {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            if (args == null || method == null) {
+                return method == null ? null : method.invoke(who, args);
+            }
+
             MethodParameterUtils.replaceFirstAppPkg(args);
-            int receiverIndex = getReceiverIndex();
-            if (args[receiverIndex] != null) {
+
+            int receiverIndex = MethodParameterUtils.getIndex(args, IIntentReceiver.class);
+            if (receiverIndex >= 0 && args[receiverIndex] instanceof IIntentReceiver) {
                 IIntentReceiver intentReceiver = (IIntentReceiver) args[receiverIndex];
                 IIntentReceiver proxy = InnerReceiverDelegate.createProxy(intentReceiver);
 
-                WeakReference<?> weakReference = BRLoadedApkReceiverDispatcherInnerReceiver.get(intentReceiver).mDispatcher();
-                if (weakReference != null) {
-                    BRLoadedApkReceiverDispatcher.get(weakReference.get())._set_mIIntentReceiver(proxy);
+                try {
+                    WeakReference<?> weakReference =
+                            BRLoadedApkReceiverDispatcherInnerReceiver.get(intentReceiver).mDispatcher();
+                    if (weakReference != null && weakReference.get() != null) {
+                        BRLoadedApkReceiverDispatcher.get(weakReference.get())
+                                ._set_mIIntentReceiver(proxy);
+                    }
+                } catch (Throwable ignored) {
+                    // OEM ActivityThread internals vary. The system call still
+                    // receives the proxy even when the local dispatcher differs.
                 }
 
                 args[receiverIndex] = proxy;
             }
-            // ignore permission
-            if (args[getPermissionIndex()] != null) {
-                args[getPermissionIndex()] = null;
-            }
+
+            normalizeReceiverUserAndFlags(method, args, receiverIndex);
+            // Keep the guest's requiredPermission intact. Clearing it broadens
+            // who can send matching broadcasts and is not needed for virtualization.
             return method.invoke(who, args);
         }
 
-        public int getReceiverIndex() {
-            if (BuildCompat.isS()) {
-                return 4;
-            } else if (BuildCompat.isR()) {
-                return 3;
-            }
-            return 2;
-        }
+        private static void normalizeReceiverUserAndFlags(
+                Method method, Object[] args, int receiverIndex) {
+            Class<?>[] types = method.getParameterTypes();
+            int count = Math.min(types.length, args.length);
+            int[] intIndexes = new int[count];
+            int intCount = 0;
 
-        public int getPermissionIndex() {
-            if (BuildCompat.isS()) {
-                return 6;
-            } else if (BuildCompat.isR()) {
-                return 5;
+            for (int i = Math.max(0, receiverIndex + 1); i < count; i++) {
+                if (types[i] == int.class || types[i] == Integer.class) {
+                    intIndexes[intCount++] = i;
+                }
             }
-            return 4;
+
+            if (intCount == 0) {
+                return;
+            }
+
+            // Modern registerReceiver(..., userId, flags): userId is the
+            // penultimate int and receiver flags are last.
+            if (intCount >= 2) {
+                int userIdIndex = intIndexes[intCount - 2];
+                if (args[userIdIndex] instanceof Integer) {
+                    args[userIdIndex] = EliteInstaller.getHostUserId();
+                }
+
+                int flagsIndex = intIndexes[intCount - 1];
+                if (args[flagsIndex] instanceof Integer) {
+                    args[flagsIndex] = ReceiverCompat.ensureExplicitExportFlag(
+                            (Integer) args[flagsIndex]);
+                }
+                return;
+            }
+
+            // Older layouts expose only userId after the receiver.
+            int userIdIndex = intIndexes[0];
+            if (args[userIdIndex] instanceof Integer) {
+                args[userIdIndex] = EliteInstaller.getHostUserId();
+            }
         }
     }
 
