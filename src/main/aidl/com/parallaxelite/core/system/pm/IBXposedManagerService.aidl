@@ -1,9 +1,9 @@
 // IBXposedManagerService.aidl
 
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import java.util.List;
-import com.elite.entity.pm.InstalledModule;
+import com.parallaxelite.entity.pm.InstalledModule;
 
 interface IBXposedManagerService {
     boolean isXPEnable();

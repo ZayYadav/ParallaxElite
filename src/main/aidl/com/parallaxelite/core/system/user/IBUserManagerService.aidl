@@ -1,8 +1,8 @@
 // IBUserManagerService.aidl
-package com.elite.core.system.user;
+package com.parallaxelite.core.system.user;
 
 // Declare any non-default types here with import statements
-import com.elite.core.system.user.BUserInfo;
+import com.parallaxelite.core.system.user.BUserInfo;
 import java.util.List;
 
 

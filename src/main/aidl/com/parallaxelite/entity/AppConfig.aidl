@@ -1,5 +1,5 @@
 // AppConfig.aidl
-package com.elite.entity;
+package com.parallaxelite.entity;
 
 // Declare any non-default types here with import statements
 
