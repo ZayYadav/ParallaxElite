@@ -45,6 +45,7 @@ import com.parallaxelite.utils.provider.ProviderCall;
 public final class TwitterNativeAuthBridgeActivity extends Activity {
     private static final String TAG = "TwitterNativeAuth";
     private static final int REQUEST_TWITTER_APP = 0x5854;
+    private static final int REQUEST_TWITTER_WEB = 0x5855;
     private static final long CALLBACK_SETTLE_MS = 1_800L;
 
     private static final String OFFICIAL_TWITTER_PACKAGE = "com.twitter.android";
@@ -56,8 +57,11 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
     private String virtualPackage;
     private int userId = -1;
     private long generation = -1L;
+    private Uri authUri;
+    private Uri expectedRedirectUri;
     private boolean providerLaunched;
     private boolean completionPending;
+    private boolean fallbackLaunched;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,13 +80,13 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         userId = bridge == null ? -1
                 : bridge.getIntExtra(ExternalAuthRouter.EXTRA_USER_ID, -1);
 
-        Uri authUri = safeUri(authUrl);
-        Uri expectedRedirect = safeUri(redirectValue);
+        authUri = safeUri(authUrl);
+        expectedRedirectUri = safeUri(redirectValue);
         if (!validResultTarget(bridge)
                 || !ExternalAuthRouter.isTwitterProviderPackage(providerPackage)
                 || !ExternalAuthRouter.isTrustedTwitterOAuthUri(authUri)
-                || !TwitterOAuthSessionStore.isHostCaptureSupported(expectedRedirect)
-                || !redirectResolvesToVirtualPackage(expectedRedirect)
+                || !TwitterOAuthSessionStore.isHostCaptureSupported(expectedRedirectUri)
+                || !redirectResolvesToVirtualPackage(expectedRedirectUri)
                 || providerIntent == null) {
             relayCancellation();
             finish();
@@ -91,7 +95,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
 
         if (savedInstanceState == null) {
             generation = TwitterOAuthSessionStore.begin(
-                    bridge, authUri, expectedRedirect, providerPackage);
+                    bridge, authUri, expectedRedirectUri, providerPackage);
             if (generation < 0L) {
                 relayCancellation();
                 finish();
@@ -104,9 +108,8 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
                 providerLaunched = true;
                 startActivityForResult(providerIntent, REQUEST_TWITTER_APP);
             } catch (Throwable ignored) {
-                TwitterOAuthSessionStore.clear(virtualPackage, userId);
-                relayCancellation();
-                finish();
+                Log.w(TAG, "native app launch failed; using private WebView fallback");
+                launchWebFallback();
             }
         } else {
             providerLaunched = true;
@@ -202,33 +205,28 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_TWITTER_WEB) {
+            if (handleOAuthResult(data)) {
+                return;
+            }
+            TwitterOAuthSessionStore.clear(virtualPackage, userId);
+            relayCancellation();
+            finish();
+            return;
+        }
+
         if (requestCode != REQUEST_TWITTER_APP || completionPending) {
             return;
         }
 
-        Uri callback = data == null ? null : data.getData();
-        if (callback != null) {
-            TwitterOAuthSessionStore.Claim claim = TwitterOAuthSessionStore.claim(callback);
-            if (claim != null
-                    && virtualPackage != null
-                    && virtualPackage.equals(claim.virtualPackage)
-                    && userId == claim.userId) {
-                Intent result = new Intent(data);
-                boolean delivered = TwitterOAuthSessionStore.deliver(
-                        claim, RESULT_OK, result);
-                if (delivered) {
-                    TwitterOAuthSessionStore.complete(claim.generation);
-                    TwitterOAuthSessionStore.clear(virtualPackage, userId);
-                    finish();
-                    return;
-                }
-                TwitterOAuthSessionStore.release(claim.generation);
-            }
+        if (handleOAuthResult(data)) {
+            return;
         }
 
         // Several Twitter/X builds finish or cancel their provider Activity just
         // before Android dispatches the custom-scheme callback. Give that callback
-        // a short bounded window instead of prematurely returning Authorize failed.
+        // a short bounded window; only then fall back to our in-app WebView.
         completionPending = true;
         mainHandler.postDelayed(() -> {
             completionPending = false;
@@ -240,10 +238,64 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
                 finish();
                 return;
             }
+            Log.i(TAG, "native callback unavailable; opening private WebView fallback");
+            launchWebFallback();
+        }, CALLBACK_SETTLE_MS);
+    }
+
+    private boolean handleOAuthResult(Intent data) {
+        Uri callback = data == null ? null : data.getData();
+        if (callback == null) {
+            return false;
+        }
+
+        TwitterOAuthSessionStore.Claim claim = TwitterOAuthSessionStore.claim(callback);
+        if (claim == null
+                || virtualPackage == null
+                || !virtualPackage.equals(claim.virtualPackage)
+                || userId != claim.userId) {
+            return false;
+        }
+
+        Intent result = new Intent(data);
+        boolean delivered = TwitterOAuthSessionStore.deliver(
+                claim, RESULT_OK, result);
+        if (!delivered) {
+            TwitterOAuthSessionStore.release(claim.generation);
+            return false;
+        }
+
+        TwitterOAuthSessionStore.complete(claim.generation);
+        TwitterOAuthSessionStore.clear(virtualPackage, userId);
+        finish();
+        return true;
+    }
+
+    private void launchWebFallback() {
+        if (fallbackLaunched || isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (!ExternalAuthRouter.isTrustedTwitterOAuthUri(authUri)
+                || !TwitterOAuthSessionStore.isHostCaptureSupported(expectedRedirectUri)) {
             TwitterOAuthSessionStore.clear(virtualPackage, userId);
             relayCancellation();
             finish();
-        }, CALLBACK_SETTLE_MS);
+            return;
+        }
+
+        try {
+            fallbackLaunched = true;
+            Intent web = new Intent(this, TwitterWebViewActivity.class);
+            web.putExtra(TwitterWebViewActivity.EXTRA_AUTH_URL, authUri.toString());
+            web.putExtra(
+                    TwitterWebViewActivity.EXTRA_REDIRECT_URI,
+                    expectedRedirectUri.toString());
+            startActivityForResult(web, REQUEST_TWITTER_WEB);
+        } catch (Throwable ignored) {
+            TwitterOAuthSessionStore.clear(virtualPackage, userId);
+            relayCancellation();
+            finish();
+        }
     }
 
     private boolean validResultTarget(Intent bridge) {
