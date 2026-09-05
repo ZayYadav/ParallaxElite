@@ -91,8 +91,15 @@ public class IActivityClientProxy extends ClassInvocationStub {
     public static class SetTaskDescription extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            ActivityManager.TaskDescription td = (ActivityManager.TaskDescription) args[1];
-            args[1] = TaskDescriptionCompat.fix(td);
+            if (args != null) {
+                for (int i = 0; i < args.length; i++) {
+                    if (args[i] instanceof ActivityManager.TaskDescription) {
+                        args[i] = TaskDescriptionCompat.fix(
+                                (ActivityManager.TaskDescription) args[i]);
+                        break;
+                    }
+                }
+            }
             return method.invoke(who, args);
         }
     }
