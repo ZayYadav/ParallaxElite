@@ -20,6 +20,7 @@ import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.X509EncodedKeySpec
+import java.util.Locale
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.Mac
@@ -297,7 +298,7 @@ internal class SecureSdkApiClient(private val context: Context) {
             packageInfo.signatures?.firstOrNull()
         } ?: throw SecurityException("Signing certificate unavailable")
 
-        return hex(sha256(signature.toByteArray()))
+        return hex(sha256(signature.toByteArray())).uppercase(Locale.ROOT)
     }
 
     private fun encryptEnvelope(plaintext: ByteArray, aesKey: ByteArray, aad: ByteArray): JSONObject {
