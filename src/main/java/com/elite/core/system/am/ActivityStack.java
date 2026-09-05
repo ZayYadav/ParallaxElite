@@ -269,10 +269,10 @@ public class ActivityStack {
 
     private Intent startActivityProcess(int userId, Intent intent, ActivityInfo info, ActivityRecord record) {
 		ProxyActivityRecord stubRecord = new ProxyActivityRecord(userId, info, intent, record);
-		String processName = info.processName;
-		if (processName == null || processName.contains(":") || !processName.equals(info.packageName)) {
-			processName = info.packageName;
-		}
+        String processName = info.processName;
+        if (processName == null || processName.trim().isEmpty()) {
+            processName = info.packageName;
+        }
 		Log.e(TAG,"StartProcess pkg=" + info.packageName + " activity=" + info.name + " process=" + processName);
 		ProcessRecord targetApp = BProcessManagerService.get().startProcessLocked(info.packageName,processName,userId,-1,Binder.getCallingPid());
 		if (targetApp == null) {
