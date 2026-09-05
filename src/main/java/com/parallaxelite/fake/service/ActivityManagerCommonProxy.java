@@ -19,6 +19,7 @@ import black.android.app.BRLoadedApkServiceDispatcherInnerConnection;
 import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.compat.auth.ExternalAuthRouter;
+import com.parallaxelite.compat.auth.GCloudTwitterNativeCompat;
 import com.parallaxelite.compat.auth.ExternalAuthServiceConnectionDelegate;
 import com.parallaxelite.compat.oauth.VirtualOAuthRouter;
 import com.parallaxelite.core.env.AppSystemEnv;
@@ -81,6 +82,15 @@ public class ActivityManagerCommonProxy {
             String dataString = intent.getDataString();
             if (dataString != null && dataString.equals("package:" + BActivityThread.getAppPackageName())) {
                 intent.setData(Uri.parse("package:" + ParallaxELiteInstaller.getHostPkg()));
+            }
+
+            // GCloud/IMSDK web-mode Twitter prepares its vendor callback before
+            // starting TwitterWebActivity. Prefer the vendor's own native Twitter
+            // Kit path here; suppress only that WebView start when native auth
+            // actually began. Returning false leaves the original WebView intact.
+            if (GCloudTwitterNativeCompat.tryStartNative(
+                    intent, StartActivityCompat.getResultTo(args))) {
+                return 0;
             }
 
             Intent externalAuthBridge = ExternalAuthRouter.createResultBridgeIntent(
