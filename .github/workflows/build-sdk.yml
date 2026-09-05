@@ -94,18 +94,26 @@ jobs:
 
           echo "Verifying arm64-v8a ELF LOAD alignment (Android 15/16 16-KB pages)"
           readelf -lW "${VERIFY_DIR}/jni/arm64-v8a/libEliteCore.so" | tee "${VERIFY_DIR}/arm64-readelf.txt"
-          awk '
-            $1 == "LOAD" {
-              align = $NF
-              sub(/^0x/, "", align)
-              value = strtonum("0x" align)
-              if (value < 16384) bad = 1
-              seen = 1
-            }
-            END {
-              if (!seen || bad) exit 1
-            }
-          ' "${VERIFY_DIR}/arm64-readelf.txt"
+          python3 - "${VERIFY_DIR}/arm64-readelf.txt" <<'PY'
+          import sys
+
+          path = sys.argv[1]
+          alignments = []
+          with open(path, "r", encoding="utf-8", errors="replace") as handle:
+              for line in handle:
+                  parts = line.split()
+                  if parts and parts[0] == "LOAD":
+                      alignments.append(int(parts[-1], 16))
+
+          if not alignments:
+              raise SystemExit("No ELF LOAD segments found")
+          if any(value < 0x4000 for value in alignments):
+              raise SystemExit(
+                  "arm64 LOAD alignment below 16 KB: "
+                  + ", ".join(hex(value) for value in alignments)
+              )
+          print("arm64 LOAD alignments:", ", ".join(hex(value) for value in alignments))
+          PY
 
           mkdir -p release-artifact
           cp "${AAR}" release-artifact/ParallaxElite-release.aar
