@@ -602,10 +602,19 @@ public final class VirtualOAuthBridgeActivity extends Activity {
     }
 
     /**
-     * Re-enters Meta's own callback chain. Prefer CustomTabActivity because its
-     * implementation is responsible for converting the browser redirect into the
-     * CustomTabMainActivity redirect action. If that component is unavailable in
-     * an older SDK, reproduce the same stable action/extra directly.
+     * Re-enters Meta's own callback chain.
+     *
+     * Our private WebView has already performed the job normally done by the
+     * external browser + exported CustomTabActivity. The Facebook SDK keeps the
+     * original CustomTabMainActivity waiting underneath. Deliver the exact Meta
+     * redirect action/extra directly to that waiting instance so its onNewIntent
+     * returns RESULT_OK to FacebookActivity.
+     *
+     * Starting a fresh CustomTabActivity first is harmful in a virtual task: if
+     * Android/our task model cannot locate the waiting CustomTabMainActivity, a
+     * new Main instance receives the redirect action in onCreate and Meta
+     * intentionally returns RESULT_CANCELED. The logcat supplied from BGMI showed
+     * precisely that cancellation chain.
      */
     static boolean dispatchFacebookCallback(
             String targetPackage, int targetUserId, Uri callbackUri) {
@@ -615,44 +624,46 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         }
 
         if (virtualActivityExists(
-                targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY, targetUserId)) {
+                targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY, targetUserId)) {
             try {
-                Intent callback = new Intent(Intent.ACTION_VIEW, callbackUri);
+                Intent callback = new Intent();
                 callback.setComponent(new ComponentName(
-                        targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY));
-                callback.addCategory(Intent.CATEGORY_DEFAULT);
-                callback.addCategory(Intent.CATEGORY_BROWSABLE);
+                        targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY));
+                callback.setAction(FACEBOOK_CUSTOM_TAB_REDIRECT_ACTION);
+                callback.putExtra(FACEBOOK_CUSTOM_TAB_EXTRA_URL, callbackUri.toString());
                 callback.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
                         | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 BActivityManager.get().startActivity(callback, targetUserId);
-                Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=true");
+                Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=true");
                 return true;
             } catch (Throwable ignored) {
-                Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=false");
+                Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=false");
             }
         } else {
-            Log.i(TAG, "facebook stage=custom_tab_activity_unavailable delivered=false");
+            Log.i(TAG, "facebook stage=custom_tab_main_unavailable delivered=false");
         }
 
+        // Compatibility fallback for older Facebook SDKs that do not expose the
+        // expected Main component. This is deliberately second choice.
         if (!virtualActivityExists(
-                targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY, targetUserId)) {
-            Log.i(TAG, "facebook stage=custom_tab_main_unavailable delivered=false");
+                targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY, targetUserId)) {
+            Log.i(TAG, "facebook stage=custom_tab_activity_unavailable delivered=false");
             return false;
         }
 
         try {
-            Intent callback = new Intent();
+            Intent callback = new Intent(Intent.ACTION_VIEW, callbackUri);
             callback.setComponent(new ComponentName(
-                    targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY));
-            callback.setAction(FACEBOOK_CUSTOM_TAB_REDIRECT_ACTION);
-            callback.putExtra(FACEBOOK_CUSTOM_TAB_EXTRA_URL, callbackUri.toString());
+                    targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY));
+            callback.addCategory(Intent.CATEGORY_DEFAULT);
+            callback.addCategory(Intent.CATEGORY_BROWSABLE);
             callback.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
                     | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             BActivityManager.get().startActivity(callback, targetUserId);
-            Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=true");
+            Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=true");
             return true;
         } catch (Throwable ignored) {
-            Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=false");
+            Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=false");
             return false;
         }
     }
