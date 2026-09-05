@@ -129,7 +129,9 @@ public class BProcessManagerService implements ISystemService {
 				if (!PermissionUtils.checkPermissions(permissions)) {
 					ConditionVariable permissionLock = new ConditionVariable();
 					startRequestPermission(permissions, permissionLock);
-					permissionLock.block();
+                    // Permission UI can be killed/recreated by the system. Never
+                    // leak this helper thread indefinitely if a callback is lost.
+					permissionLock.block(60_000L);
 				}
 			}).start();
         }
@@ -142,9 +144,13 @@ public class BProcessManagerService implements ISystemService {
 		   }
 		   return;
 	   }
-	   if (EliteInstaller.getContext() == null || permissionLock == null) {
-		   return;
-	   }
+       if (permissionLock == null) {
+           return;
+       }
+       if (EliteInstaller.getContext() == null) {
+           permissionLock.open();
+           return;
+       }
 	   PermissionUtils.startRequestPermissions(EliteInstaller.getContext(), permissions, new PermissionUtils.CallBack() {
 	   @Override
 	   public boolean onResult(int requestCode, String[] permissions, int[] grantResults) {
