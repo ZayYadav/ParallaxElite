@@ -198,11 +198,29 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 	}
     
     @Override
-    public Activity newActivity(ClassLoader cl, String className, Intent intent) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+    public Activity newActivity(ClassLoader cl, String className, Intent intent)
+            throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         try {
             return super.newActivity(cl, className, intent);
-        } catch (ClassNotFoundException e) {
-            return mBaseInstrumentation.newActivity(cl, className, intent);
+        } catch (ClassNotFoundException firstFailure) {
+            // Split/plugin-heavy apps can reach Instrumentation with a stale host
+            // loader. Retry only with the already-bound guest loader; never search
+            // arbitrary host/system loaders because that breaks class isolation.
+            ClassLoader guest = null;
+            try {
+                if (BActivityThread.getApplication() != null) {
+                    guest = BActivityThread.getApplication().getClassLoader();
+                }
+                if (guest == null) {
+                    guest = delegateAppClassLoader;
+                }
+            } catch (Throwable ignored) {
+            }
+
+            if (guest != null && guest != cl) {
+                return super.newActivity(guest, className, intent);
+            }
+            throw firstFailure;
         }
     }
 }
