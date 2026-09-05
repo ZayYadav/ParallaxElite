@@ -79,11 +79,13 @@ public class ActiveServices {
             if (runningServiceRecord == null) {
                 return 0;
             }
-            if (runningServiceRecord.mBindCount.get() > 0) {
-                Log.d(TAG, "There are also connections");
-                return 0;
-            }
+            // stopService clears the "started" state even when clients are
+            // still bound. The Service remains alive until the last unbind.
             runningServiceRecord.mStartId.set(0);
+            if (runningServiceRecord.mBindCount.get() > 0) {
+                Log.d(TAG, "Service stopped but retained for active bindings");
+                return 1;
+            }
             ResolveInfo resolveInfo = resolveService(intent, resolvedType, userId);
             if (resolveInfo == null)
                 return 0;
@@ -131,8 +133,11 @@ public class ActiveServices {
                         binder.linkToDeath(new IBinder.DeathRecipient() {
                             @Override
                             public void binderDied() {
-                                binder.unlinkToDeath(this, 0);
-                                mConnectedServices.remove(binder);
+                                try {
+                                    binder.unlinkToDeath(this, 0);
+                                } catch (Throwable ignored) {
+                                }
+                                removeConnection(binder);
                             }
                         }, 0);
                     } catch (RemoteException e) {
@@ -155,14 +160,27 @@ public class ActiveServices {
     }
 
     public void unbindService(IBinder binder, int userId) {
-        ConnectedServiceRecord connectedService = mConnectedServices.get(binder);
-        if (connectedService == null) {
+        removeConnection(binder);
+    }
+
+    private void removeConnection(IBinder binder) {
+        if (binder == null) {
             return;
         }
-        RunningServiceRecord runningServiceRecord = getOrCreateRunningServiceRecord(connectedService.mIntent);
-        runningServiceRecord.mConnectedServiceRecord = null;
-        runningServiceRecord.mBindCount.decrementAndGet();
-        mConnectedServices.remove(binder);
+        ConnectedServiceRecord connectedService = mConnectedServices.remove(binder);
+        if (connectedService == null || connectedService.mIntent == null) {
+            return;
+        }
+
+        synchronized (mRunningServiceRecords) {
+            RunningServiceRecord runningServiceRecord =
+                    findRunningServiceRecord(connectedService.mIntent);
+            if (runningServiceRecord == null) {
+                return;
+            }
+            runningServiceRecord.mConnectedServiceRecord = null;
+            runningServiceRecord.decrementBindCountAndGet();
+        }
     }
 
     public void stopServiceToken(ComponentName className, IBinder token, int userId) {
@@ -192,6 +210,9 @@ public class ActiveServices {
         if (proxyIntent == null)
             return null;
         ProxyServiceRecord proxyServiceRecord = ProxyServiceRecord.create(proxyIntent);
+        if (proxyServiceRecord.mServiceIntent == null) {
+            return null;
+        }
         ComponentName component = proxyServiceRecord.mServiceIntent.getComponent();
 
         RunningServiceRecord runningServiceRecord = findRunningServiceRecord(proxyServiceRecord.mServiceIntent);
@@ -284,7 +305,7 @@ public class ActiveServices {
 
     public static class RunningServiceRecord extends IEmpty.Stub {
         // onStartCommand startId
-        private final AtomicInteger mStartId = new AtomicInteger(1);
+        private final AtomicInteger mStartId = new AtomicInteger(0);
         private final AtomicInteger mBindCount = new AtomicInteger(0);
         // 正在连接的服务
         private ConnectedServiceRecord mConnectedServiceRecord;
@@ -293,11 +314,19 @@ public class ActiveServices {
         private Intent mIntent;
 
         public int getAndIncrementStartId() {
-            return mStartId.getAndIncrement();
+            return mStartId.incrementAndGet();
         }
 
         public int decrementBindCountAndGet() {
-            return mBindCount.decrementAndGet();
+            while (true) {
+                int current = mBindCount.get();
+                if (current <= 0) {
+                    return 0;
+                }
+                if (mBindCount.compareAndSet(current, current - 1)) {
+                    return current - 1;
+                }
+            }
         }
 
         public int incrementBindCountAndGet() {
