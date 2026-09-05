@@ -1,4 +1,4 @@
-package com.elite.core;
+package com.parallaxelite.core;
 
 import android.content.Intent;
 import android.content.ComponentName;
@@ -9,10 +9,10 @@ import android.os.Bundle;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.entity.pm.InstallResult;
-import com.elite.utils.auth.Auth;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.entity.pm.InstallResult;
+import com.parallaxelite.utils.auth.Auth;
 import org.lsposed.lsparanoid.Obfuscate;
 
 @Obfuscate
@@ -50,7 +50,7 @@ public class GmsCore {
         }
         String virtualPackage = BActivityThread.getAppPackageName();
         if (virtualPackage == null || !virtualPackage.equals(info.packageName)
-                || info.packageName.equals(EliteInstaller.getHostPkg())
+                || info.packageName.equals(ParallaxELiteInstaller.getHostPkg())
                 || isGoogleAppOrService(info.packageName)) {
             return info;
         }
@@ -121,19 +121,19 @@ public class GmsCore {
 	}
 
     private static InstallResult installPackages(Set<String> list, int userId) {
-        EliteInstaller sEliteInstaller = EliteInstaller.get();
+        ParallaxELiteInstaller sParallaxELiteInstaller = ParallaxELiteInstaller.get();
         for (String packageName : list) {
-            if (sEliteInstaller.isInstalled(packageName, userId)) {
+            if (sParallaxELiteInstaller.isInstalled(packageName, userId)) {
                 continue;
             }
 
             try {
-                EliteInstaller.getContext().getPackageManager().getApplicationInfo(packageName, 0);
+                ParallaxELiteInstaller.getContext().getPackageManager().getApplicationInfo(packageName, 0);
             } catch (PackageManager.NameNotFoundException ignored) {
                 continue;
             }
 
-            InstallResult installResult = sEliteInstaller.installPackageAsUser(packageName, userId);
+            InstallResult installResult = sParallaxELiteInstaller.installPackageAsUser(packageName, userId);
             if (!installResult.success) {
                 return installResult;
             }
@@ -142,9 +142,9 @@ public class GmsCore {
     }
 
     private static void uninstallPackages(Set<String> list, int userId) {
-        EliteInstaller sEliteInstaller = EliteInstaller.get();
+        ParallaxELiteInstaller sParallaxELiteInstaller = ParallaxELiteInstaller.get();
         for (String packageName : list) {
-            sEliteInstaller.uninstallPackageAsUser(packageName, userId);
+            sParallaxELiteInstaller.uninstallPackageAsUser(packageName, userId);
         }
     }
 
@@ -174,13 +174,13 @@ public class GmsCore {
 
     public static boolean isSupportGms() {
         try {
-            EliteInstaller.getPackageManager().getPackageInfo(GMS_PKG, 0);
+            ParallaxELiteInstaller.getPackageManager().getPackageInfo(GMS_PKG, 0);
             return true;
         } catch (PackageManager.NameNotFoundException ignored) { }
         return false;
     }
 
     public static boolean isInstalledGoogleService(int userId) {
-        return EliteInstaller.get().isInstalled(GMS_PKG, userId);
+        return ParallaxELiteInstaller.get().isInstalled(GMS_PKG, userId);
     }
 }

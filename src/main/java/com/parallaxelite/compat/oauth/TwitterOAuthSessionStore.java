@@ -1,4 +1,4 @@
-package com.elite.compat.oauth;
+package com.parallaxelite.compat.oauth;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import com.elite.compat.auth.ExternalAuthRouter;
-import com.elite.proxy.ProxyManifest;
-import com.elite.utils.compat.BundleCompat;
-import com.elite.utils.provider.ProviderCall;
+import com.parallaxelite.compat.auth.ExternalAuthRouter;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.utils.compat.BundleCompat;
+import com.parallaxelite.utils.provider.ProviderCall;
 
 /**
  * Short-lived in-process state for OAuth callbacks that return from the real

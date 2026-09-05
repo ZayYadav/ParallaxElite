@@ -1,4 +1,4 @@
-package com.elite.compat.oauth;
+package com.parallaxelite.compat.oauth;
 
 import android.app.Activity;
 import android.content.Intent;

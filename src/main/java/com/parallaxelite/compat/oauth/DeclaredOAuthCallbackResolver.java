@@ -1,4 +1,4 @@
-package com.elite.compat.oauth;
+package com.parallaxelite.compat.oauth;
 
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -16,8 +16,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.elite.fake.frameworks.BPackageManager;
-import com.elite.utils.compat.PackageParserCompat;
+import com.parallaxelite.fake.frameworks.BPackageManager;
+import com.parallaxelite.utils.compat.PackageParserCompat;
 
 /**
  * Reads OAuth/deep-link callback declarations from the virtual APK itself.

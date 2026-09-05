@@ -1,9 +1,9 @@
-package com.elite.core;
+package com.parallaxelite.core;
 
 import android.MetaCore.RemoteManager;
 import android.content.Context;
 import android.content.pm.PackageInfo;
-import com.elite.app.configuration.ClientConfiguration;
+import com.parallaxelite.app.configuration.ClientConfiguration;
 import java.io.File;
 
 public class HostApp extends ClientConfiguration {

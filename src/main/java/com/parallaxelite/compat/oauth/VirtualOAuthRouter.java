@@ -1,4 +1,4 @@
-package com.elite.compat.oauth;
+package com.parallaxelite.compat.oauth;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -13,9 +13,9 @@ import java.util.Set;
 
 import org.lsposed.lsparanoid.Obfuscate;
 
-import com.elite.EliteInstaller;
-import com.elite.fake.frameworks.BPackageManager;
-import com.elite.utils.FileUtils;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.fake.frameworks.BPackageManager;
+import com.parallaxelite.utils.FileUtils;
 
 /**
  * Detects browser based OAuth launches made by a virtual/cloned application and
@@ -28,15 +28,15 @@ import com.elite.utils.FileUtils;
 @Obfuscate
 public final class VirtualOAuthRouter {
     public static final String EXTRA_AUTH_URL =
-            "com.elite.oauth.AUTH_URL";
+            "com.parallaxelite.oauth.AUTH_URL";
     public static final String EXTRA_REDIRECT_URI =
-            "com.elite.oauth.REDIRECT_URI";
+            "com.parallaxelite.oauth.REDIRECT_URI";
     public static final String EXTRA_VIRTUAL_PACKAGE =
-            "com.elite.oauth.VIRTUAL_PACKAGE";
+            "com.parallaxelite.oauth.VIRTUAL_PACKAGE";
     public static final String EXTRA_USER_ID =
-            "com.elite.oauth.USER_ID";
+            "com.parallaxelite.oauth.USER_ID";
     public static final String EXTRA_AUTH_PROVIDER =
-            "com.elite.oauth.AUTH_PROVIDER";
+            "com.parallaxelite.oauth.AUTH_PROVIDER";
 
     private static final Set<String> AUTH_HOSTS = new HashSet<>(Arrays.asList(
             "accounts.google.com",
@@ -103,14 +103,14 @@ public final class VirtualOAuthRouter {
         // explicitly advertises AndroidX Auth Tab support. A normal ACTION_VIEW
         // browser cannot return arbitrary virtual custom schemes to this SDK.
         String authProvider = AuthTabCompat.findProvider(
-                EliteInstaller.getContext(), authUri);
+                ParallaxELiteInstaller.getContext(), authUri);
         if (authProvider == null || authProvider.trim().isEmpty()) {
             return null;
         }
 
         Intent bridge = new Intent();
         bridge.setComponent(new ComponentName(
-                EliteInstaller.getHostPkg(),
+                ParallaxELiteInstaller.getHostPkg(),
                 VirtualOAuthBridgeActivity.class.getName()));
         bridge.putExtra(EXTRA_AUTH_URL, authUri.toString());
         bridge.putExtra(EXTRA_REDIRECT_URI, redirectUri.toString());

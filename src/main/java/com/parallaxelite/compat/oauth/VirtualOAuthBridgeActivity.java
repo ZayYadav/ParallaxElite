@@ -1,4 +1,4 @@
-package com.elite.compat.oauth;
+package com.parallaxelite.compat.oauth;
 
 import android.app.Activity;
 import android.content.ComponentName;
@@ -17,13 +17,13 @@ import java.util.Locale;
 
 import org.lsposed.lsparanoid.Obfuscate;
 
-import com.elite.compat.auth.ExternalAuthRouter;
-import com.elite.fake.frameworks.BActivityManager;
-import com.elite.fake.frameworks.BPackageManager;
-import com.elite.proxy.ProxyManifest;
-import com.elite.utils.FileUtils;
-import com.elite.utils.compat.BundleCompat;
-import com.elite.utils.provider.ProviderCall;
+import com.parallaxelite.compat.auth.ExternalAuthRouter;
+import com.parallaxelite.fake.frameworks.BActivityManager;
+import com.parallaxelite.fake.frameworks.BPackageManager;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.compat.BundleCompat;
+import com.parallaxelite.utils.provider.ProviderCall;
 
 /**
  * Stable host-main trampoline for browser OAuth and trusted native provider auth.

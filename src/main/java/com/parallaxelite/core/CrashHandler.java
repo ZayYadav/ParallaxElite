@@ -1,6 +1,6 @@
-package com.elite.core;
+package com.parallaxelite.core;
 
-import com.elite.EliteInstaller;
+import com.parallaxelite.ParallaxELiteInstaller;
 
 /**
  * Created by Milk on 4/30/21.
@@ -24,8 +24,8 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     @Override
     public void uncaughtException(Thread t, Throwable e) {
-        if (EliteInstaller.get().getExceptionHandler() != null) {
-            EliteInstaller.get().getExceptionHandler().uncaughtException(t, e);
+        if (ParallaxELiteInstaller.get().getExceptionHandler() != null) {
+            ParallaxELiteInstaller.get().getExceptionHandler().uncaughtException(t, e);
         }
         mDefaultHandler.uncaughtException(t, e);
     }

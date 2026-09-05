@@ -1,4 +1,4 @@
-package com.elite.core;
+package com.parallaxelite.core;
 
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -7,8 +7,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 
-import com.elite.EliteInstaller;
-import com.elite.utils.Slog;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.utils.Slog;
 
 /**
  * Google Play Services aur Facebook login ke liye complete fix
@@ -118,7 +118,7 @@ public class AuthCore {
         
         ApplicationInfo dummyInfo = new ApplicationInfo();
         dummyInfo.packageName = packageName;
-        dummyInfo.uid = EliteInstaller.getHostUid();
+        dummyInfo.uid = ParallaxELiteInstaller.getHostUid();
         dummyInfo.flags = ApplicationInfo.FLAG_SYSTEM;
         dummyInfo.sourceDir = "/system/app/" + packageName + ".apk";
         dummyInfo.publicSourceDir = dummyInfo.sourceDir;

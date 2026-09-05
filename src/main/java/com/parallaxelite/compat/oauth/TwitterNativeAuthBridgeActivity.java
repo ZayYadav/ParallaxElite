@@ -1,4 +1,4 @@
-package com.elite.compat.oauth;
+package com.parallaxelite.compat.oauth;
 
 import android.app.Activity;
 import android.content.ComponentName;
@@ -15,13 +15,13 @@ import android.util.Log;
 
 import org.lsposed.lsparanoid.Obfuscate;
 
-import com.elite.EliteInstaller;
-import com.elite.compat.auth.ExternalAuthRouter;
-import com.elite.fake.frameworks.BPackageManager;
-import com.elite.proxy.ProxyManifest;
-import com.elite.utils.FileUtils;
-import com.elite.utils.compat.BundleCompat;
-import com.elite.utils.provider.ProviderCall;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.compat.auth.ExternalAuthRouter;
+import com.parallaxelite.fake.frameworks.BPackageManager;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.compat.BundleCompat;
+import com.parallaxelite.utils.provider.ProviderCall;
 
 /**
  * Host-main trampoline dedicated to real Twitter/X application OAuth.
@@ -149,11 +149,11 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
             ComponentName component,
             Uri authUri) {
         try {
-            if (component == null || authUri == null || EliteInstaller.getContext() == null) {
+            if (component == null || authUri == null || ParallaxELiteInstaller.getContext() == null) {
                 return false;
             }
 
-            PackageManager pm = EliteInstaller.getContext().getPackageManager();
+            PackageManager pm = ParallaxELiteInstaller.getContext().getPackageManager();
             ActivityInfo info = pm.getActivityInfo(component, 0);
             if (!isUsableExactXActivity(info)) {
                 return false;
