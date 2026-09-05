@@ -209,17 +209,10 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
             if (N == 1) {
                 return query.get(0);
             } else if (N > 1) {
-                // If there is more than one activity with the same priority,
-                // then let the user decide between them.
-                ResolveInfo r0 = query.get(0);
-                ResolveInfo r1 = query.get(1);
-                // If the first activity has a higher priority, or a different
-                // default, then it is always desirable to pick it.
-                if (r0.priority != r1.priority
-                        || r0.preferredOrder != r1.preferredOrder
-                        || r0.isDefault != r1.isDefault) {
-                    return query.get(0);
-                }
+                // ComponentResolver already returns matches in resolver order.
+                // The virtual environment has no separate system ResolverActivity,
+                // so returning null here breaks otherwise valid implicit launches.
+                return query.get(0);
             }
         }
         return null;
@@ -444,28 +437,22 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
         }
 
         // reader
-        List<ResolveInfo> result;
         synchronized (mPackages) {
             if (pkgName != null) {
                 BPackageSettings bPackageSettings = mPackages.get(pkgName);
-                result = null;
-                if (bPackageSettings != null) {
-                    final BPackage pkg = bPackageSettings.pkg;
-
-                    result = mComponentResolver.queryActivities(
-                            intent, resolvedType, flags, pkg.activities, userId);
+                if (bPackageSettings == null) {
+                    return Collections.emptyList();
                 }
-                if (result == null || result.size() == 0) {
-                    // the caller wants to resolve for a particular package; however, there
-                    // were no installed results, so, try to find an ephemeral result
-                    if (result == null) {
-                        result = new ArrayList<>();
-                    }
-                }
-                return result;
+                final BPackage pkg = bPackageSettings.pkg;
+                List<ResolveInfo> result = mComponentResolver.queryActivities(
+                        intent, resolvedType, flags, pkg.activities, userId);
+                return result == null ? Collections.emptyList() : result;
             }
+
+            List<ResolveInfo> result =
+                    mComponentResolver.queryActivities(intent, resolvedType, flags, userId);
+            return result == null ? Collections.emptyList() : result;
         }
-        return Collections.emptyList();
     }
 
     @Override
@@ -513,9 +500,8 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
         if (!sUserManager.exists(userId)) return Collections.emptyList();
 
         List<ProviderInfo> providers = new ArrayList<>();
-        if (TextUtils.isEmpty(processName))
-            return providers;
-        providers.addAll(mComponentResolver.queryProviders(processName, null, flags, userId));
+        providers.addAll(
+                mComponentResolver.queryProviders(processName, null, flags, userId));
         return providers;
     }
 
@@ -607,25 +593,33 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
     }
     
     @Override
-	public boolean isAppRunning(String packageName, int userId) {
-		ActivityManager activityManager = (ActivityManager) EliteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
-		List<ActivityManager.RunningAppProcessInfo> processes = activityManager.getRunningAppProcesses();
-		if (processes == null) return false;
-
-		for (ActivityManager.RunningAppProcessInfo process : processes) {
-			if (Arrays.asList(process.pkgList).contains(packageName)) {
-				return true;
-			}
-		}
-		return false;
-	}
+    public boolean isAppRunning(String packageName, int userId) {
+        if (TextUtils.isEmpty(packageName) || !sUserManager.exists(userId)) {
+            return false;
+        }
+        for (ProcessRecord record :
+                BProcessManagerService.get().getPackageProcessAsUser(packageName, userId)) {
+            if (record != null
+                    && record.bActivityThread != null
+                    && record.bActivityThread.asBinder().isBinderAlive()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     public void deleteUser(int userId) throws RemoteException {
+        List<String> packageNames = new ArrayList<>();
         synchronized (mPackages) {
             for (BPackageSettings ps : mPackages.values()) {
-                uninstallPackageAsUser(ps.pkg.packageName, userId);
+                if (ps != null && ps.pkg != null) {
+                    packageNames.add(ps.pkg.packageName);
+                }
             }
+        }
+        for (String packageName : packageNames) {
+            uninstallPackageAsUser(packageName, userId);
         }
     }
 
@@ -660,11 +654,13 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
     @Override
     public String[] getPackagesForUid(int uid, int userId) throws RemoteException {
         if (!sUserManager.exists(userId)) return new String[]{};
+        final int requestedAppId = BUserHandle.getAppId(uid);
         synchronized (mPackages) {
             List<String> packages = new ArrayList<>();
             for (BPackageSettings ps : mPackages.values()) {
                 String packageName = ps.pkg.packageName;
-                if (ps.getInstalled(userId) && getAppId(packageName) == uid) {
+                if (ps.getInstalled(userId)
+                        && getAppId(packageName) == requestedAppId) {
                     packages.add(packageName);
                 }
             }
