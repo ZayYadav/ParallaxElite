@@ -374,10 +374,15 @@
                 android:resource="@xml/filepath" />
         </provider>
 
+        <service
+            android:name=".proxy.ProxyPendingService"
+            android:enabled="true"
+            android:exported="false" />
+
         <receiver
             android:name=".proxy.ProxyBroadcastReceiver"
             android:enabled="true"
-            android:exported="true"
+            android:exported="false"
             android:process="@string/vbox_service_name">
             <intent-filter>
                 <action android:name="${applicationId}.stub_receiver" />
