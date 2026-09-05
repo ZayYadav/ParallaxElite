@@ -115,7 +115,8 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         if (authUri == null || !VirtualOAuthRouter.isTrustedAuthUri(authUri)
                 || redirectUri == null || virtualPackage == null
                 || virtualPackage.trim().isEmpty() || userId < 0
-                || authProvider == null || authProvider.trim().isEmpty()) {
+                || (!FacebookAuthHost.matches(authUri)
+                    && (authProvider == null || authProvider.trim().isEmpty()))) {
             if (resultBridgeMode) {
                 completeBridgeResult(RESULT_CANCELED, null);
             } else {
@@ -129,7 +130,8 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         twitterFlow = isTwitterHost(authUri);
         legacyTwitterFlow = twitterFlow && hasQueryParameter(authUri, "oauth_token");
         if (!redirectResolvesToVirtualPackage(redirectUri)
-                || !AuthTabCompat.isSupportedProvider(this, authProvider, authUri)) {
+                || (!facebookFlow
+                    && !AuthTabCompat.isSupportedProvider(this, authProvider, authUri))) {
             diagnostic("setup_rejected", false, false, false, false, false);
             facebookDiagnostic("setup_rejected", RESULT_CANCELED, null, null, false);
             if (resultBridgeMode) {
@@ -153,8 +155,30 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                 FacebookOAuthSessionStore.begin(
                         authUri, expectedRedirectUri, virtualPackage, userId);
                 facebookDiagnostic("session_started", RESULT_CANCELED, null, null, false);
+                launchFacebookWebView(authUri, expectedRedirectUri);
+            } else {
+                launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
             }
-            launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
+        }
+    }
+
+    private void launchFacebookWebView(Uri authUri, Uri redirectUri) {
+        try {
+            Intent webViewIntent = new Intent(this, FacebookWebViewActivity.class);
+            webViewIntent.putExtra(
+                    FacebookWebViewActivity.EXTRA_AUTH_URL, authUri.toString());
+            webViewIntent.putExtra(
+                    FacebookWebViewActivity.EXTRA_REDIRECT_URI, redirectUri.toString());
+            startActivityForResult(webViewIntent, REQUEST_AUTH_TAB);
+            facebookDiagnostic("webview_launch", RESULT_CANCELED, null, null, false);
+        } catch (Throwable ignored) {
+            facebookDiagnostic("webview_launch_failed", RESULT_CANCELED, null, null, false);
+            FacebookOAuthSessionStore.clear(virtualPackage, userId);
+            if (resultBridgeMode) {
+                completeBridgeResult(RESULT_CANCELED, null);
+            } else {
+                finish();
+            }
         }
     }
 
