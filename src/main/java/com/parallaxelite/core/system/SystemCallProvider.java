@@ -1,4 +1,4 @@
-package com.elite.core.system;
+package com.parallaxelite.core.system;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -9,8 +9,8 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.elite.utils.Slog;
-import com.elite.utils.compat.BundleCompat;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.BundleCompat;
 
 /**
  * Created by @jagdish_via on 3/31/21.

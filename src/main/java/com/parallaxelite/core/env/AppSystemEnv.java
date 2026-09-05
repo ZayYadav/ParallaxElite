@@ -1,4 +1,4 @@
-package com.elite.core.env;
+package com.parallaxelite.core.env;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -7,8 +7,8 @@ import android.MetaCore.RemoteManager;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.elite.EliteInstaller;
-import com.elite.core.GmsCore;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.GmsCore;
 
 public class AppSystemEnv {
     private static final List<String> sSystemPackages = new ArrayList<>();
@@ -67,7 +67,7 @@ public class AppSystemEnv {
 
         // ---- SU / Root apps ----
         sSuPackages.add("com.noshufou.android.su");
-        sSuPackages.add("com.noshufou.android.su.elite");
+        sSuPackages.add("com.noshufou.android.su.parallaxelite");
         sSuPackages.add("eu.chainfire.supersu");
         sSuPackages.add("com.koushikdutta.superuser");
         sSuPackages.add("com.thirdparty.superuser");
@@ -117,7 +117,7 @@ public class AppSystemEnv {
     }
 
     public static boolean isBlackPackage(String packageName) {
-        if (EliteInstaller.get().setHideRoot() && sSuPackages.contains(packageName)) {
+        if (ParallaxELiteInstaller.get().setHideRoot() && sSuPackages.contains(packageName)) {
             return true;
         }
         return RemoteManager.sHideXposed && sXposedPackages.contains(packageName);

@@ -1,4 +1,4 @@
-package com.elite.core.env;
+package com.parallaxelite.core.env;
 
 import android.content.pm.ApplicationInfo;
 

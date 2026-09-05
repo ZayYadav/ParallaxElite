@@ -1,4 +1,4 @@
-package com.elite.core.system;
+package com.parallaxelite.core.system;
 
 import android.app.NotificationManager;
 import android.app.Service;
@@ -9,8 +9,8 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
-import com.elite.EliteInstaller;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 
 /**
@@ -23,7 +23,7 @@ import com.elite.utils.compat.BuildCompat;
  */
 public class DaemonService extends Service {
     public static final String TAG = "DaemonService";
-    private static final int NOTIFY_ID = EliteInstaller.getHostPkg().hashCode();
+    private static final int NOTIFY_ID = ParallaxELiteInstaller.getHostPkg().hashCode();
 
     @Override
     public IBinder onBind(Intent intent) {

@@ -1,4 +1,4 @@
-package com.elite.core;
+package com.parallaxelite.core;
 
 import android.os.Binder;
 import android.os.Build;
@@ -14,9 +14,9 @@ import android.content.Context;
 import java.io.File;
 import java.util.List;
 import dalvik.system.DexFile;
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.utils.compat.DexFileCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.utils.compat.DexFileCompat;
 
 public class VNative {
     
@@ -25,8 +25,8 @@ public class VNative {
     public static String libtarget = "libbgmi.so";
 
     static {
-        System.loadLibrary("EliteCore");
-        File file = new File(EliteInstaller.getContext().getFilesDir(), "loader/" + libtarget);
+        System.loadLibrary("ParallaxELiteCore");
+        File file = new File(ParallaxELiteInstaller.getContext().getFilesDir(), "loader/" + libtarget);
         if (file.exists()) {
             System.load(file.getAbsolutePath());
         }
@@ -41,7 +41,7 @@ public class VNative {
     public static int getCallingUid(int origCallingUid) {
         if (origCallingUid > 0 && origCallingUid < Process.FIRST_APPLICATION_UID) return origCallingUid;
         if (origCallingUid > Process.LAST_APPLICATION_UID) return origCallingUid;
-        if (origCallingUid == EliteInstaller.getHostUid()) {
+        if (origCallingUid == ParallaxELiteInstaller.getHostUid()) {
             if(BActivityThread.getAppPackageName().equals("com.google.android.gms")){
                 return Process.ROOT_UID;
             }

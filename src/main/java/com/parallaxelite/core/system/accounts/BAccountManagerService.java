@@ -1,4 +1,4 @@
-package com.elite.core.system.accounts;
+package com.parallaxelite.core.system.accounts;
 
 import android.accounts.AbstractAccountAuthenticator;
 import android.accounts.Account;
@@ -56,19 +56,19 @@ import java.util.Objects;
 
 import black.com.android.internal.BRRstyleable;
 import black.com.android.internal.RstyleableStatic;
-import com.elite.EliteInstaller;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.ProcessRecord;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.core.system.pm.PackageMonitor;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.utils.ArrayUtils;
-import com.elite.utils.CloseUtils;
-import com.elite.utils.FileUtils;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.AccountManagerCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.ProcessRecord;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.core.system.pm.PackageMonitor;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.utils.ArrayUtils;
+import com.parallaxelite.utils.CloseUtils;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.AccountManagerCompat;
 
 /**
  * Created by BlackBox on 2022/3/3.
@@ -100,7 +100,7 @@ public class BAccountManagerService extends IBAccountManagerService.Stub impleme
     }
 
     public BAccountManagerService() {
-        mContext = EliteInstaller.getContext();
+        mContext = ParallaxELiteInstaller.getContext();
         mPms = BPackageManagerService.get();
     }
 

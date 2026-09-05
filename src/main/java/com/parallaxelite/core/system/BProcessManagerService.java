@@ -1,4 +1,4 @@
-package com.elite.core.system;
+package com.parallaxelite.core.system;
 
 import android.app.ActivityManager;
 import android.content.Context;
@@ -21,23 +21,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.elite.EliteInstaller;
-import com.elite.core.IBActivityThread;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.notification.BNotificationManagerService;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.entity.AppConfig;
-import com.elite.fake.hook.ClassInvocationStub;
-import com.elite.proxy.ProxyManifest;
-import com.elite.utils.FileUtils;
-import com.elite.utils.PermissionUtils;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.ApplicationThreadCompat;
-import com.elite.utils.compat.BuildCompat;
-import com.elite.utils.compat.BundleCompat;
-import com.elite.utils.provider.ProviderCall;
-import com.elite.core.system.api.MetaActivationManager;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.IBActivityThread;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.notification.BNotificationManagerService;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.entity.AppConfig;
+import com.parallaxelite.fake.hook.ClassInvocationStub;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.PermissionUtils;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.ApplicationThreadCompat;
+import com.parallaxelite.utils.compat.BuildCompat;
+import com.parallaxelite.utils.compat.BundleCompat;
+import com.parallaxelite.utils.provider.ProviderCall;
+import com.parallaxelite.core.system.api.MetaActivationManager;
 
 /**
  * Created by @jagdish_vip on 4/2/21.
@@ -115,7 +115,7 @@ public class BProcessManagerService implements ISystemService {
                 mPidsSelfLocked.remove(app);
                 app = null;
             } else {
-                app.pid = getPid(EliteInstaller.getContext(), ProxyManifest.getProcessName(app.bpid));
+                app.pid = getPid(ParallaxELiteInstaller.getContext(), ProxyManifest.getProcessName(app.bpid));
             }
         }
         return app;
@@ -147,11 +147,11 @@ public class BProcessManagerService implements ISystemService {
        if (permissionLock == null) {
            return;
        }
-       if (EliteInstaller.getContext() == null) {
+       if (ParallaxELiteInstaller.getContext() == null) {
            permissionLock.open();
            return;
        }
-	   PermissionUtils.startRequestPermissions(EliteInstaller.getContext(), permissions, new PermissionUtils.CallBack() {
+	   PermissionUtils.startRequestPermissions(ParallaxELiteInstaller.getContext(), permissions, new PermissionUtils.CallBack() {
 	   @Override
 	   public boolean onResult(int requestCode, String[] permissions, int[] grantResults) {
 		 try {
@@ -166,7 +166,7 @@ public class BProcessManagerService implements ISystemService {
     // 20240801 add request permission add end 0
 
     private int getUsingBPidL() {
-        ActivityManager manager = (ActivityManager) EliteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager manager = (ActivityManager) ParallaxELiteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
         List<ActivityManager.RunningAppProcessInfo> runningAppProcesses =
                 manager == null ? null : manager.getRunningAppProcesses();
         Set<Integer> usingPs = new HashSet<>();
@@ -191,7 +191,7 @@ public class BProcessManagerService implements ISystemService {
             int callingPid = Binder.getCallingPid();
             ProcessRecord app = findProcessByPid(callingPid);
             if (app == null) {
-                String stubProcessName = getProcessName(EliteInstaller.getContext(), callingPid);
+                String stubProcessName = getProcessName(ParallaxELiteInstaller.getContext(), callingPid);
                 int bpid = parseBPid(stubProcessName);
                 startProcessLocked(packageName, processName, userId, bpid, callingPid);
             }
@@ -203,7 +203,7 @@ public class BProcessManagerService implements ISystemService {
         if (stubProcessName == null) {
             return -1;
         } else {
-            prefix = EliteInstaller.getHostPkg() + ":p";
+            prefix = ParallaxELiteInstaller.getHostPkg() + ":p";
         }
         if (stubProcessName.startsWith(prefix)) {
             try {

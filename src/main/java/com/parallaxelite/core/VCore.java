@@ -1,4 +1,4 @@
-package com.elite.core;
+package com.parallaxelite.core;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -18,11 +18,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.core.env.BEnvironment;
-import com.elite.utils.FileUtils;
-import com.elite.utils.TrieTree;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.TrieTree;
 
 @SuppressLint("SdCardPath")
 public class VCore {
@@ -108,8 +108,8 @@ public class VCore {
         String packageName = context.getPackageName();
 
         try {
-            ApplicationInfo packageInfo = EliteInstaller.getBPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA, BActivityThread.getUserId());
-            int systemUserId = EliteInstaller.getHostUserId();
+            ApplicationInfo packageInfo = ParallaxELiteInstaller.getBPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA, BActivityThread.getUserId());
+            int systemUserId = ParallaxELiteInstaller.getHostUserId();
             rule.put(String.format("/data/data/%s/lib", packageName), packageInfo.nativeLibraryDir);
             rule.put(String.format("/data/user/%d/%s/lib", systemUserId, packageName), packageInfo.nativeLibraryDir);
 
@@ -129,7 +129,7 @@ public class VCore {
             rule.put(String.format("/data/misc/profiles/cur/%d/%s", BActivityThread.getUserId(), packageName), profilesCurDir.getAbsolutePath());
             rule.put(String.format("/data/misc/profiles/ref/%d/%s", BActivityThread.getUserId(), packageName), profilesRefDir.getAbsolutePath());
 
-            if (EliteInstaller.getContext().getExternalCacheDir() != null && context.getExternalCacheDir() != null) {
+            if (ParallaxELiteInstaller.getContext().getExternalCacheDir() != null && context.getExternalCacheDir() != null) {
                 File external = BEnvironment.getExternalStorageDirectory();
                // File external = BEnvironment.getExternalUserDir(BActivityThread.getUserId());
 
@@ -140,7 +140,7 @@ public class VCore {
                 blackRule.add("/sdcard/Pictures");
                 blackRule.add(String.format("/storage/emulated/%d/Pictures", systemUserId));
             }
-            if (EliteInstaller.get().setHideRoot()) {
+            if (ParallaxELiteInstaller.get().setHideRoot()) {
                 hideRoot(rule);
             }
             proc(rule);

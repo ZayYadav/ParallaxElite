@@ -1,4 +1,4 @@
-package com.elite.core.system;
+package com.parallaxelite.core.system;
 
 import android.content.pm.ApplicationInfo;
 import android.os.Binder;
@@ -11,9 +11,9 @@ import android.system.OsConstants;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
 
-import com.elite.core.IBActivityThread;
-import com.elite.entity.AppConfig;
-import com.elite.proxy.ProxyManifest;
+import com.parallaxelite.core.IBActivityThread;
+import com.parallaxelite.entity.AppConfig;
+import com.parallaxelite.proxy.ProxyManifest;
 
 public class ProcessRecord extends Binder {
     public final ApplicationInfo info;

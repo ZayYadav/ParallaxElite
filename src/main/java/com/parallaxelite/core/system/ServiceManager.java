@@ -1,20 +1,20 @@
-package com.elite.core.system;
+package com.parallaxelite.core.system;
 
 import android.os.IBinder;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import com.elite.EliteInstaller;
-import com.elite.core.system.accounts.BAccountManagerService;
-import com.elite.core.system.am.BActivityManagerService;
-import com.elite.core.system.am.BJobManagerService;
-import com.elite.core.system.location.BLocationManagerService;
-import com.elite.core.system.notification.BNotificationManagerService;
-import com.elite.core.system.os.BStorageManagerService;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.core.system.pm.BXposedManagerService;
-import com.elite.core.system.user.BUserManagerService;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.system.accounts.BAccountManagerService;
+import com.parallaxelite.core.system.am.BActivityManagerService;
+import com.parallaxelite.core.system.am.BJobManagerService;
+import com.parallaxelite.core.system.location.BLocationManagerService;
+import com.parallaxelite.core.system.notification.BNotificationManagerService;
+import com.parallaxelite.core.system.os.BStorageManagerService;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.core.system.pm.BXposedManagerService;
+import com.parallaxelite.core.system.user.BUserManagerService;
 
 /**
  * Created by Milk on 3/31/21.
@@ -70,14 +70,14 @@ public class ServiceManager {
     }
 
     public static void initBlackManager() {
-        EliteInstaller.get().getService(ACTIVITY_MANAGER);
-        EliteInstaller.get().getService(JOB_MANAGER);
-        EliteInstaller.get().getService(PACKAGE_MANAGER);
-        EliteInstaller.get().getService(STORAGE_MANAGER);
-        EliteInstaller.get().getService(USER_MANAGER);
-        EliteInstaller.get().getService(XPOSED_MANAGER);
-        EliteInstaller.get().getService(ACCOUNT_MANAGER);
-        EliteInstaller.get().getService(LOCATION_MANAGER);
-        EliteInstaller.get().getService(NOTIFICATION_MANAGER);
+        ParallaxELiteInstaller.get().getService(ACTIVITY_MANAGER);
+        ParallaxELiteInstaller.get().getService(JOB_MANAGER);
+        ParallaxELiteInstaller.get().getService(PACKAGE_MANAGER);
+        ParallaxELiteInstaller.get().getService(STORAGE_MANAGER);
+        ParallaxELiteInstaller.get().getService(USER_MANAGER);
+        ParallaxELiteInstaller.get().getService(XPOSED_MANAGER);
+        ParallaxELiteInstaller.get().getService(ACCOUNT_MANAGER);
+        ParallaxELiteInstaller.get().getService(LOCATION_MANAGER);
+        ParallaxELiteInstaller.get().getService(NOTIFICATION_MANAGER);
     }
 }

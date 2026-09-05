@@ -1,28 +1,28 @@
-package com.elite.core.env;
+package com.parallaxelite.core.env;
 
 import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
 
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.utils.compat.BuildCompat;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 
-import com.elite.EliteInstaller;
-import com.elite.utils.FileUtils;
-import com.elite.app.BActivityThread;
-import com.elite.core.system.api.MetaActivationManager;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.core.system.api.MetaActivationManager;
 import org.lsposed.lsparanoid.Obfuscate;
 
 @Obfuscate
 public class BEnvironment {
    
-  //  private static final File sExternalVirtualRoot = EliteInstaller.getContext().getExternalFilesDir("EliteCore");
-    private static final File sVBoxRoot = EliteInstaller.getContext().getFilesDir();
-  //  private static final File sVBoxRoot = new File(EliteInstaller.getContext().getCacheDir().getParent(), "EliteCore");
+  //  private static final File sExternalVirtualRoot = ParallaxELiteInstaller.getContext().getExternalFilesDir("ParallaxELiteCore");
+    private static final File sVBoxRoot = ParallaxELiteInstaller.getContext().getFilesDir();
+  //  private static final File sVBoxRoot = new File(ParallaxELiteInstaller.getContext().getCacheDir().getParent(), "ParallaxELiteCore");
     private static final File sExternalVBoxRoot = Environment.getExternalStorageDirectory();
     
 	public static void load() {

@@ -1,4 +1,4 @@
-package com.elite.core.system;
+package com.parallaxelite.core.system;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -8,22 +8,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.elite.EliteInstaller;
-import com.elite.core.env.AppSystemEnv;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.accounts.BAccountManagerService;
-import com.elite.core.system.am.BActivityManagerService;
-import com.elite.core.system.am.BJobManagerService;
-import com.elite.core.system.location.BLocationManagerService;
-import com.elite.core.system.notification.BNotificationManagerService;
-import com.elite.core.system.os.BStorageManagerService;
-import com.elite.core.system.pm.BPackageInstallerService;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.core.system.pm.BXposedManagerService;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.core.system.user.BUserManagerService;
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.FileUtils;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.env.AppSystemEnv;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.accounts.BAccountManagerService;
+import com.parallaxelite.core.system.am.BActivityManagerService;
+import com.parallaxelite.core.system.am.BJobManagerService;
+import com.parallaxelite.core.system.location.BLocationManagerService;
+import com.parallaxelite.core.system.notification.BNotificationManagerService;
+import com.parallaxelite.core.system.os.BStorageManagerService;
+import com.parallaxelite.core.system.pm.BPackageInstallerService;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.core.system.pm.BXposedManagerService;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.core.system.user.BUserManagerService;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.FileUtils;
 
 public class VBoxSystem {
 
@@ -76,7 +76,7 @@ public class VBoxSystem {
         for (String pkg : preInstallPackages) {
             try {
                 if (!BPackageManagerService.get().isInstalled(pkg, BUserHandle.USER_ALL)) {
-                    PackageInfo info = EliteInstaller.getPackageManager().getPackageInfo(pkg, 0);
+                    PackageInfo info = ParallaxELiteInstaller.getPackageManager().getPackageInfo(pkg, 0);
                     BPackageManagerService.get().installPackageAsUser(info.applicationInfo.sourceDir,InstallOption.installBySystem(),BUserHandle.USER_ALL);
                 }
             } catch (PackageManager.NameNotFoundException ignored) {
@@ -90,7 +90,7 @@ public class VBoxSystem {
     private void initJarEnv() {
         // OPTIONAL: junit.jar (ignore if missing)
         try {
-            InputStream junit = EliteInstaller.getContext().getAssets().open("junit.jar");
+            InputStream junit = ParallaxELiteInstaller.getContext().getAssets().open("junit.jar");
             FileUtils.copyFile(junit,android.MetaCore.RemoteManager.JUNIT_JAR);
         } catch (Throwable ignored) {
             // junit.jar not present → safe to ignore
@@ -98,7 +98,7 @@ public class VBoxSystem {
 
         // REQUIRED: empty.jar
         try {
-            InputStream empty = EliteInstaller.getContext().getAssets().open("empty.jar");
+            InputStream empty = ParallaxELiteInstaller.getContext().getAssets().open("empty.jar");
             FileUtils.copyFile(empty,android.MetaCore.RemoteManager.EMPTY_JAR);
         } catch (Throwable e) {
             // empty.jar missing is a REAL problem
