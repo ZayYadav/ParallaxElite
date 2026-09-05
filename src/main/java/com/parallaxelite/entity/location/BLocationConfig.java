@@ -1,4 +1,4 @@
-package com.elite.entity.location;
+package com.parallaxelite.entity.location;
 
 import android.os.Parcel;
 import android.os.Parcelable;

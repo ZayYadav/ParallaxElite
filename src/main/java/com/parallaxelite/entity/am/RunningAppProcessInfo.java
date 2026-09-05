@@ -1,4 +1,4 @@
-package com.elite.entity.am;
+package com.parallaxelite.entity.am;
 
 import android.app.ActivityManager;
 import android.os.Parcel;

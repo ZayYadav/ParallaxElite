@@ -1,4 +1,4 @@
-package com.elite.entity.pm;
+package com.parallaxelite.entity.pm;
 
 import android.os.Parcel;
 import android.os.Parcelable;

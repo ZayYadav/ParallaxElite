@@ -1,4 +1,4 @@
-package com.elite.fake.delegate;
+package com.parallaxelite.fake.delegate;
 
 
 import android.annotation.TargetApi;
@@ -20,10 +20,10 @@ import android.os.UserHandle;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.app.configuration.AppLifecycleCallback;
-import com.elite.utils.Reflector;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.app.configuration.AppLifecycleCallback;
+import com.parallaxelite.utils.Reflector;
 
 public class BaseInstrumentationDelegate extends Instrumentation {
 
@@ -238,7 +238,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnCreate(Activity activity, Bundle icicle) {
         mBaseInstrumentation.callActivityOnCreate(activity, icicle);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivityCreated(activity, icicle);
         }
     }
@@ -246,7 +246,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnCreate(Activity activity, Bundle icicle, PersistableBundle persistentState) {
         mBaseInstrumentation.callActivityOnCreate(activity, icicle, persistentState);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivityCreated(activity, icicle);
         }
     }
@@ -254,7 +254,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnDestroy(Activity activity) {
         mBaseInstrumentation.callActivityOnDestroy(activity);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivityDestroyed(activity);
         }
     }
@@ -287,7 +287,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnStart(Activity activity) {
         mBaseInstrumentation.callActivityOnStart(activity);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivityStarted(activity);
         }
     }
@@ -300,7 +300,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnResume(Activity activity) {
         mBaseInstrumentation.callActivityOnResume(activity);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivityResumed(activity);
         }
     }
@@ -308,7 +308,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnStop(Activity activity) {
         mBaseInstrumentation.callActivityOnStop(activity);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivityStopped(activity);
         }
     }
@@ -321,7 +321,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnSaveInstanceState(Activity activity, Bundle outState, PersistableBundle outPersistentState) {
         mBaseInstrumentation.callActivityOnSaveInstanceState(activity, outState, outPersistentState);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivitySaveInstanceState(activity, outState);
         }
     }
@@ -329,7 +329,7 @@ public class BaseInstrumentationDelegate extends Instrumentation {
     @Override
     public void callActivityOnPause(Activity activity) {
         mBaseInstrumentation.callActivityOnPause(activity);
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.onActivityPaused(activity);
         }
     }

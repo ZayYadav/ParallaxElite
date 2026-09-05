@@ -1,4 +1,4 @@
-package com.elite.fake.delegate;
+package com.parallaxelite.fake.delegate;
 
 import android.app.Activity;
 import android.app.Application;
@@ -19,17 +19,17 @@ import java.lang.reflect.Field;
 import black.android.app.BRActivity;
 import black.android.app.BRActivityThread;
 import java.lang.reflect.Method;
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.fake.hook.HookManager;
-import com.elite.fake.hook.IInjectHook;
-import com.elite.fake.service.HCallbackStub;
-import com.elite.fake.service.IActivityClientProxy;
-import com.elite.utils.HackAppUtils;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.ActivityCompat;
-import com.elite.utils.compat.ActivityManagerCompat;
-import com.elite.utils.compat.ContextCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.fake.hook.HookManager;
+import com.parallaxelite.fake.hook.IInjectHook;
+import com.parallaxelite.fake.service.HCallbackStub;
+import com.parallaxelite.fake.service.IActivityClientProxy;
+import com.parallaxelite.utils.HackAppUtils;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.ActivityCompat;
+import com.parallaxelite.utils.compat.ActivityManagerCompat;
+import com.parallaxelite.utils.compat.ContextCompat;
 
 public final class AppInstrumentation extends BaseInstrumentationDelegate implements IInjectHook {
     
@@ -61,7 +61,7 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 			Instrumentation mInstrumentation = getCurrInstrumentation();
 			if (mInstrumentation == this || checkInstrumentation(mInstrumentation)) return;
 			mBaseInstrumentation = (Instrumentation) mInstrumentation;
-			BRActivityThread.get(EliteInstaller.mainThread())._set_mInstrumentation(this);
+			BRActivityThread.get(ParallaxELiteInstaller.mainThread())._set_mInstrumentation(this);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -75,7 +75,7 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 		if (RIFLE_APP_CLASS.equals(mInstrumentation.getClass().getName())) {
 			AppInstrumentation appInstrumentation = (AppInstrumentation) BRActivityLifeCycleHelper$ApplicationInstrumentation.get(mInstrumentation).mBase();
 			if (appInstrumentation != null) mBaseInstrumentation = appInstrumentation.mBaseInstrumentation;
-			BRActivityThread.get(EliteInstaller.mainThread())._set_mInstrumentation(this);
+			BRActivityThread.get(ParallaxELiteInstaller.mainThread())._set_mInstrumentation(this);
 		}
 	}
 
@@ -95,7 +95,7 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 						Instrumentation mBaseInstrumentation = ((AppInstrumentation) obj).mBaseInstrumentation;
 						field.set(mInstrumentation, mBaseInstrumentation);
 						((AppInstrumentation) obj).mBaseInstrumentation = mInstrumentation;
-						BRActivityThread.get(EliteInstaller.mainThread())._set_mInstrumentation(obj);
+						BRActivityThread.get(ParallaxELiteInstaller.mainThread())._set_mInstrumentation(obj);
 					}
 				} catch (Exception ignored) {
 				}
@@ -105,7 +105,7 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 	}
 
 	public Instrumentation getCurrInstrumentation() {
-		Object currentActivityThread = EliteInstaller.mainThread();
+		Object currentActivityThread = ParallaxELiteInstaller.mainThread();
 		return BRActivityThread.get(currentActivityThread).mInstrumentation();
 	}
 

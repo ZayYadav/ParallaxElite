@@ -1,6 +1,6 @@
-package com.elite.fake;
+package com.parallaxelite.fake;
 
-import com.elite.jnihook.ReflectCore;
+import com.parallaxelite.jnihook.ReflectCore;
 
 /**
  * Created by @jagdish_vip on 3/7/21.

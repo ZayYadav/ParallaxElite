@@ -1,4 +1,4 @@
-package com.elite.entity.am;
+package com.parallaxelite.entity.am;
 
 import android.content.BroadcastReceiver;
 import android.os.Bundle;
@@ -12,7 +12,7 @@ import black.android.content.BRBroadcastReceiverPendingResult;
 import black.android.content.BRBroadcastReceiverPendingResultM;
 import black.android.content.BroadcastReceiverPendingResultContext;
 import black.android.content.BroadcastReceiverPendingResultMContext;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 /**
  * Created by BlackBox on 2022/2/28.

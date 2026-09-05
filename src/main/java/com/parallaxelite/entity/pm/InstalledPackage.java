@@ -1,4 +1,4 @@
-package com.elite.entity.pm;
+package com.parallaxelite.entity.pm;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
@@ -8,8 +8,8 @@ import android.os.Parcelable;
 
 import java.util.Objects;
 
-import com.elite.EliteInstaller;
-import com.elite.utils.FileUtils;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.utils.FileUtils;
 
 /**
  * Created by Milk on 4/20/21.
@@ -24,11 +24,11 @@ public class InstalledPackage implements Parcelable {
     public String packageName;
 
     public ApplicationInfo getApplication() {
-        return EliteInstaller.getBPackageManager().getApplicationInfo(packageName, FileUtils.FileMode.MODE_IWUSR, userId);
+        return ParallaxELiteInstaller.getBPackageManager().getApplicationInfo(packageName, FileUtils.FileMode.MODE_IWUSR, userId);
     }
 
     public PackageInfo getPackageInfo() {
-        return EliteInstaller.getBPackageManager().getPackageInfo(packageName, FileUtils.FileMode.MODE_IWUSR, userId);
+        return ParallaxELiteInstaller.getBPackageManager().getPackageInfo(packageName, FileUtils.FileMode.MODE_IWUSR, userId);
     }
 
     @Override

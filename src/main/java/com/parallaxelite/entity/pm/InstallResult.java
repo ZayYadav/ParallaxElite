@@ -1,9 +1,9 @@
-package com.elite.entity.pm;
+package com.parallaxelite.entity.pm;
 
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.elite.utils.Slog;
+import com.parallaxelite.utils.Slog;
 
 /**
  * Created by Milk on 4/20/21.

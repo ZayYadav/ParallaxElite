@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.elite.entity.location;
+package com.parallaxelite.entity.location;
 
 import android.location.Location;
 import android.location.LocationManager;
