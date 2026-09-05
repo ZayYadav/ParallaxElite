@@ -59,6 +59,10 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
     }
 
     override fun activateSdk(userkey: String?) {
+        activateSdkInternal(userkey, true)
+    }
+
+    private fun activateSdkInternal(userkey: String?, notifyUser: Boolean) {
         renewalTask?.cancel(false)
         val normalizedKey = userkey?.trim().orEmpty()
         if (normalizedKey.isEmpty()) {
@@ -84,7 +88,7 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
                         getAppName(context, packageName),
                         deviceId(),
                     )
-                    applySecureResponse(context, response, normalizedKey)
+                    applySecureResponse(context, response, normalizedKey, notifyUser)
                     return@execute
                 } catch (throwable: Throwable) {
                     lastFailure = throwable.message ?: "Secure activation failed"
@@ -103,11 +107,11 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
                 }
             }
             // Do not expose panel/security failure details in notifications.
-            showNotificationSafe("SDK ACTIVATE FAILED", "SDK NOT ACTIVATED")
+            if (notifyUser) showNotificationSafe("SDK ACTIVATE FAILED", "SDK NOT ACTIVATED")
         }
     }
 
-    private fun applySecureResponse(context: Context, data: JSONObject, licenseKey: String) {
+    private fun applySecureResponse(context: Context, data: JSONObject, licenseKey: String, notifyUser: Boolean) {
         val serverMode = data.optString("server_mode", "offline").lowercase(Locale.ROOT)
         val message = data.optString("message", "Activation rejected")
         if (data.optString("status") != "success" || serverMode != "online") {
@@ -128,8 +132,14 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
             return
         }
 
-        // SecureSdkApiClient already verifies the signed package, signing-certificate,
-        // device-key and request bindings before this method receives a success response.
+        // SecureSdkApiClient already verifies these signed identity bindings.
+        val authorizedPackage = data.optString("authorized_package", "")
+        val authorizedSigning = data.optString("authorized_signing_sha256", "")
+        if (authorizedPackage != context.packageName || authorizedSigning.length != 64) {
+            nk.clearActivation("Panel identity binding is invalid")
+            return
+        }
+
         val expiry = data.optString("expiry", "")
         context.getSharedPreferences(nk.PREFERENCE_NAME, Context.MODE_PRIVATE).edit()
             .putBoolean("activated", true)
@@ -151,12 +161,12 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
         nk.Msg = "SDK activated - YOUR SDK ACTIVATED"
         renewalTask?.cancel(false)
         val renewAfter = maxOf(60L, leaseExpiresAt - serverTime - 60L)
-        renewalTask = renewalExecutor.schedule({ activateSdk(licenseKey) }, renewAfter, TimeUnit.SECONDS)
+        renewalTask = renewalExecutor.schedule({ activateSdkInternal(licenseKey, false) }, renewAfter, TimeUnit.SECONDS)
 
         isDaemon(data.optInt("feature1", 0) == 1)
         ishideRoot(data.optInt("feature2", 0) == 1)
 
-        if (data.has("server_notification")) {
+        if (notifyUser && data.has("server_notification")) {
             val notification = data.optJSONObject("server_notification")
             if (notification?.optInt("enabled", 0) == 1) {
                 showServerNotification(
@@ -166,7 +176,9 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
                 )
             }
         }
-        showNotificationSafe("SDK ACTIVATED", "YOUR SDK ACTIVATED")
+        if (notifyUser) {
+            showNotificationSafe("SDK ACTIVATED", "YOUR SDK ACTIVATED")
+        }
     }
 
     private fun isRetryable(throwable: Throwable): Boolean {
