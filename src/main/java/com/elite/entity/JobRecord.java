@@ -19,6 +19,10 @@ public class JobRecord implements Parcelable {
 
     public JobInfo mJobInfo;
     public ServiceInfo mServiceInfo;
+    public int mGuestJobId;
+    public int mHostJobId;
+    public int mUserId;
+    public String mProcessName;
 
     public JobService mJobService;
 
@@ -34,11 +38,19 @@ public class JobRecord implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(this.mJobInfo, flags);
         dest.writeParcelable(this.mServiceInfo, flags);
+        dest.writeInt(this.mGuestJobId);
+        dest.writeInt(this.mHostJobId);
+        dest.writeInt(this.mUserId);
+        dest.writeString(this.mProcessName);
     }
 
     protected JobRecord(Parcel in) {
         this.mJobInfo = in.readParcelable(JobInfo.class.getClassLoader());
         this.mServiceInfo = in.readParcelable(ServiceInfo.class.getClassLoader());
+        this.mGuestJobId = in.readInt();
+        this.mHostJobId = in.readInt();
+        this.mUserId = in.readInt();
+        this.mProcessName = in.readString();
     }
 
     public static final Creator<JobRecord> CREATOR = new Creator<JobRecord>() {
