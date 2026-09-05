@@ -1,0 +1,15 @@
+#include <jni.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <dlfcn.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cstdint>
+#include <sys/mman.h>
+#include <android/log.h>
+#include "SandHook/oxorany.h"
+#include "KittyMemory/MemoryPatch.h"
+#include "SandHook/Macros.h"
+#define targetLibName oxorany("libanogs.so")
+
