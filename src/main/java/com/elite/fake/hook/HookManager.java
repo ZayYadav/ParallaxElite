@@ -13,7 +13,7 @@ import com.elite.fake.service.vivo.IVivoPermissionServiceProxy;
 import com.elite.utils.Slog;
 import com.elite.utils.compat.BuildCompat;
 /**
- * Created by @jagdish_vip on 3/30/21.
+ * Created by @RIYAZXERO on 3/30/21.
  * * ∧＿∧
  * (`･ω･∥
  * 丶　つ０
@@ -37,7 +37,7 @@ public class HookManager {
             addInjector(new IDisplayManagerProxy());
             addInjector(new IJobServiceProxy());
             addInjector(new IActivityManagerProxy());
-            addInjector(new IPackageManagerProxy());
+            addInjector(new IAuthCompatPackageManagerProxy());
             addInjector(new ITelephonyManagerProxy());
             addInjector(new HCallbackStub());
             addInjector(new IWifiManagerProxy());
@@ -61,7 +61,7 @@ public class HookManager {
             addInjector(new IAccessibilityManagerProxy());
             addInjector(new ITelephonyRegistryProxy());
             addInjector(new IDevicePolicyManagerProxy());
-            addInjector(new IAccountManagerProxy());
+            addInjector(new ITwitterAwareAccountManagerProxy());
             addInjector(new IConnectivityManagerProxy());
             addInjector(new IClipboardManagerProxy());
             addInjector(new IPhoneSubInfoProxy());
