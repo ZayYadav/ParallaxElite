@@ -1,4 +1,4 @@
-package com.elite.core.system.os;
+package com.parallaxelite.core.system.os;
 
 import android.net.Uri;
 import android.os.Process;
@@ -9,13 +9,13 @@ import java.io.File;
 
 import black.android.os.storage.BRStorageManager;
 import black.android.os.storage.BRStorageVolume;
-import com.elite.EliteInstaller;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.fake.provider.FileProvider;
-import com.elite.proxy.ProxyManifest;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.fake.provider.FileProvider;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 
 public class BStorageManagerService extends IBStorageManagerService.Stub implements ISystemService {
@@ -52,7 +52,7 @@ public class BStorageManagerService extends IBStorageManagerService.Stub impleme
 
     @Override
     public Uri getUriForFile(String file) throws RemoteException {
-        return FileProvider.getUriForFile(EliteInstaller.getContext(), ProxyManifest.getProxyFileProvider(), new File(file));
+        return FileProvider.getUriForFile(ParallaxELiteInstaller.getContext(), ProxyManifest.getProxyFileProvider(), new File(file));
     }
 
     @Override

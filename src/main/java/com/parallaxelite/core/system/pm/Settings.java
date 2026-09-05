@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -15,14 +15,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.elite.EliteInstaller;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.FileUtils;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.PackageParserCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.PackageParserCompat;
 
 /**
  * Created by Milk on 4/13/21.
@@ -196,7 +196,7 @@ import com.elite.utils.compat.PackageParserCompat;
             BPackageSettings bPackageSettings = new BPackageSettings(packageSettingsIn);
             bPackageSettings.pkg.mExtras = bPackageSettings;
             if (bPackageSettings.installOption.isFlag(InstallOption.FLAG_SYSTEM)) {
-                PackageInfo packageInfo = EliteInstaller.getPackageManager().getPackageInfo(packageName, FileUtils.FileMode.MODE_IWUSR);
+                PackageInfo packageInfo = ParallaxELiteInstaller.getPackageManager().getPackageInfo(packageName, FileUtils.FileMode.MODE_IWUSR);
                 String currPackageSourcePath = packageInfo.applicationInfo.sourceDir;
                 if (!currPackageSourcePath.equals(bPackageSettings.pkg.baseCodePath)) {
                     // update baseCodePath And Re install
@@ -232,7 +232,7 @@ import com.elite.utils.compat.PackageParserCompat;
         if (aPackage == null) {
             throw new RuntimeException("parser apk error.");
         }
-        aPackage.applicationInfo = EliteInstaller.getPackageManager().getPackageInfo(aPackage.packageName, 0).applicationInfo;
+        aPackage.applicationInfo = ParallaxELiteInstaller.getPackageManager().getPackageInfo(aPackage.packageName, 0).applicationInfo;
         return getPackageLPw(aPackage.packageName, aPackage, option);
     }
 

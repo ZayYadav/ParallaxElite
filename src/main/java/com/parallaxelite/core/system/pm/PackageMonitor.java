@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 /**
  * Created by Milk on 5/2/21.

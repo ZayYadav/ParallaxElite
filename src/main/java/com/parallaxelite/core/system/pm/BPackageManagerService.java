@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
@@ -32,25 +32,25 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import com.elite.EliteInstaller;
-import com.elite.core.GmsCore;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.ProcessRecord;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.core.system.user.BUserInfo;
-import com.elite.core.system.user.BUserManagerService;
-import com.elite.entity.pm.InstallOption;
-import com.elite.entity.pm.InstallResult;
-import com.elite.entity.pm.InstalledPackage;
-import com.elite.utils.AbiUtils;
-import com.elite.utils.FileUtils;
-import com.elite.utils.PermissionUtils;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.PackageParserCompat;
-import com.elite.utils.compat.ReceiverCompat;
-import com.elite.utils.compat.XposedParserCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.GmsCore;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.ProcessRecord;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.core.system.user.BUserInfo;
+import com.parallaxelite.core.system.user.BUserManagerService;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.entity.pm.InstallResult;
+import com.parallaxelite.entity.pm.InstalledPackage;
+import com.parallaxelite.utils.AbiUtils;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.PermissionUtils;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.PackageParserCompat;
+import com.parallaxelite.utils.compat.ReceiverCompat;
+import com.parallaxelite.utils.compat.XposedParserCompat;
 
 import static android.content.pm.PackageManager.MATCH_DIRECT_BOOT_UNAWARE;
 
@@ -88,7 +88,7 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
         filter.addAction("android.intent.action.PACKAGE_REMOVED");
         filter.addDataScheme("package");
         ReceiverCompat.registerSystemReceiver(
-                EliteInstaller.getContext(), mPackageChangedHandler, filter);
+                ParallaxELiteInstaller.getContext(), mPackageChangedHandler, filter);
     }
 
     private final BroadcastReceiver mPackageChangedHandler = new BroadcastReceiver() {
@@ -106,9 +106,9 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
     @Override
     public ApplicationInfo getApplicationInfo(String packageName, int flags, int userId) {
         if (!sUserManager.exists(userId)) return null;
-        if (Objects.equals(packageName, EliteInstaller.getHostPkg())) {
+        if (Objects.equals(packageName, ParallaxELiteInstaller.getHostPkg())) {
             try {
-                return EliteInstaller.getPackageManager().getApplicationInfo(packageName, flags);
+                return ParallaxELiteInstaller.getPackageManager().getApplicationInfo(packageName, flags);
             } catch (PackageManager.NameNotFoundException e) {
                 e.printStackTrace();
             }
@@ -252,7 +252,7 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
     @Override
     public List<ResolveInfo> queryIntentServices(
             Intent intent, int flags, int userId) {
-        final String resolvedType = intent.resolveTypeIfNeeded(EliteInstaller.getContext().getContentResolver());
+        final String resolvedType = intent.resolveTypeIfNeeded(ParallaxELiteInstaller.getContext().getContentResolver());
         return this.queryIntentServicesInternal(intent, resolvedType, flags, userId);
     }
 
@@ -274,9 +274,9 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
     @Override
     public PackageInfo getPackageInfo(String packageName, int flags, int userId) {
         if (!sUserManager.exists(userId)) return null;
-        if (Objects.equals(packageName, EliteInstaller.getHostPkg())) {
+        if (Objects.equals(packageName, ParallaxELiteInstaller.getHostPkg())) {
             try {
-                return EliteInstaller.getPackageManager().getPackageInfo(packageName, flags);
+                return ParallaxELiteInstaller.getPackageManager().getPackageInfo(packageName, flags);
             } catch (PackageManager.NameNotFoundException e) {
                 e.printStackTrace();
             }
@@ -679,7 +679,7 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
         if (info != null) {
             return 0;
         }
-        return EliteInstaller.getPackageManager().checkPermission(permission,packageName);
+        return ParallaxELiteInstaller.getPackageManager().checkPermission(permission,packageName);
     }
 
     @Override
@@ -692,7 +692,7 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
         if (permissionInfo != null) {
             return PackageManager.PERMISSION_GRANTED;
         }
-        return EliteInstaller.getPackageManager().checkPermission(permName,pkgName);
+        return ParallaxELiteInstaller.getPackageManager().checkPermission(permName,pkgName);
     }
 
     @Override
@@ -716,7 +716,7 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
             }
             if (option.isFlag(InstallOption.FLAG_URI_FILE)) {
                 apkFile = new File(BEnvironment.getCacheDir(), UUID.randomUUID().toString() + ".apk");
-                InputStream inputStream = EliteInstaller.getContext().getContentResolver().openInputStream(Uri.parse(file));
+                InputStream inputStream = ParallaxELiteInstaller.getContext().getContentResolver().openInputStream(Uri.parse(file));
                 FileUtils.copyFile(inputStream, apkFile);
             } else {
                 apkFile = new File(file);
@@ -729,16 +729,16 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
                 return new InstallResult().installError("not a XP module");
             }
 
-            PackageInfo packageArchiveInfo = EliteInstaller.getPackageManager().getPackageArchiveInfo(apkFile.getAbsolutePath(), 0);
+            PackageInfo packageArchiveInfo = ParallaxELiteInstaller.getPackageManager().getPackageArchiveInfo(apkFile.getAbsolutePath(), 0);
             if (packageArchiveInfo == null) {
                 return result.installError("getPackageArchiveInfo error.Please check whether APK is normal.");
             }
 
             boolean support = AbiUtils.isSupport(apkFile);
             if (!support) {
-                String msg = packageArchiveInfo.applicationInfo.loadLabel(EliteInstaller.getPackageManager()) + "[" + packageArchiveInfo.packageName + "]";
+                String msg = packageArchiveInfo.applicationInfo.loadLabel(ParallaxELiteInstaller.getPackageManager()) + "[" + packageArchiveInfo.packageName + "]";
                 return result.installError(packageArchiveInfo.packageName,
-                        msg + (EliteInstaller.is64Bit() ? " not support armeabi-v7a abi" : "not support arm64-v8a abi"));
+                        msg + (ParallaxELiteInstaller.is64Bit() ? " not support armeabi-v7a abi" : "not support arm64-v8a abi"));
             }
             PackageParser.Package aPackage = parserApk(apkFile.getAbsolutePath());
             if (aPackage == null) {
@@ -747,7 +747,7 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
             result.packageName = aPackage.packageName;
 
             if (option.isFlag(InstallOption.FLAG_SYSTEM)) {
-                aPackage.applicationInfo = EliteInstaller.getPackageManager().getPackageInfo(aPackage.packageName, 0).applicationInfo;
+                aPackage.applicationInfo = ParallaxELiteInstaller.getPackageManager().getPackageInfo(aPackage.packageName, 0).applicationInfo;
             }
             BPackageSettings bPackageSettings = mSettings.getPackageLPw(aPackage.packageName, aPackage, option);
 

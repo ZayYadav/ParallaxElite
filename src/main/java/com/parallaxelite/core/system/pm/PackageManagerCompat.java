@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -29,14 +29,14 @@ import black.android.content.pm.BRApplicationInfoN;
 import black.android.content.pm.BRPackageParserSigningDetails;
 import black.android.content.pm.BRSigningInfo;
 import black.android.content.res.BRAssetManager;
-import com.elite.EliteInstaller;
-import com.elite.core.env.AppSystemEnv;
-import com.elite.core.env.BEnvironment;
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.ArrayUtils;
-import com.elite.utils.AbiUtils;
-import com.elite.utils.FileUtils;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.env.AppSystemEnv;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.ArrayUtils;
+import com.parallaxelite.utils.AbiUtils;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 /**
  * Created by Milk on 4/15/21.
@@ -193,7 +193,7 @@ public class PackageManagerCompat {
         }
         PackageInfo base = null;
         try {
-            base = EliteInstaller.getContext().getPackageManager().getPackageInfo(p.packageName, flags);
+            base = ParallaxELiteInstaller.getContext().getPackageManager().getPackageInfo(p.packageName, flags);
         } catch (PackageManager.NameNotFoundException ignored) {
         }
         if ((flags & PackageManager.GET_SIGNATURES) != 0) {
@@ -283,13 +283,13 @@ public class PackageManagerCompat {
         }
         ApplicationInfo baseApplication;
         try {
-            baseApplication = EliteInstaller.getPackageManager().getApplicationInfo(EliteInstaller.getHostPkg(), flags);
+            baseApplication = ParallaxELiteInstaller.getPackageManager().getApplicationInfo(ParallaxELiteInstaller.getHostPkg(), flags);
         } catch (Exception e) {
             return null;
         }
         String sourceDir = p.baseCodePath;
         if (p.applicationInfo == null) {
-            p.applicationInfo = EliteInstaller.getPackageManager().getPackageArchiveInfo(sourceDir, 0).applicationInfo;
+            p.applicationInfo = ParallaxELiteInstaller.getPackageManager().getPackageArchiveInfo(sourceDir, 0).applicationInfo;
         }
         ApplicationInfo ai = new ApplicationInfo(p.applicationInfo);
         if ((flags & PackageManager.GET_META_DATA) != 0) {
@@ -347,10 +347,10 @@ public class PackageManagerCompat {
         try {
             if (p.installOption != null
                     && p.installOption.isFlag(InstallOption.FLAG_SYSTEM)) {
-                template = EliteInstaller.getPackageManager().getPackageInfo(
+                template = ParallaxELiteInstaller.getPackageManager().getPackageInfo(
                         p.packageName, flags);
             } else if (p.baseCodePath != null) {
-                template = EliteInstaller.getPackageManager().getPackageArchiveInfo(
+                template = ParallaxELiteInstaller.getPackageManager().getPackageArchiveInfo(
                         p.baseCodePath, flags);
             }
         } catch (Throwable ignored) {

@@ -1,17 +1,17 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.pm.installer.CopyExecutor;
-import com.elite.core.system.pm.installer.CreatePackageExecutor;
-import com.elite.core.system.pm.installer.CreateUserExecutor;
-import com.elite.core.system.pm.installer.Executor;
-import com.elite.core.system.pm.installer.RemoveAppExecutor;
-import com.elite.core.system.pm.installer.RemoveUserExecutor;
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.Slog;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.pm.installer.CopyExecutor;
+import com.parallaxelite.core.system.pm.installer.CreatePackageExecutor;
+import com.parallaxelite.core.system.pm.installer.CreateUserExecutor;
+import com.parallaxelite.core.system.pm.installer.Executor;
+import com.parallaxelite.core.system.pm.installer.RemoveAppExecutor;
+import com.parallaxelite.core.system.pm.installer.RemoveUserExecutor;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.Slog;
 
 /**
  * Created by @jagdish_vip on 4/21/21.

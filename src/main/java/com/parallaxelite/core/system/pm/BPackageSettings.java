@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -11,12 +11,12 @@ import java.util.List;
 import java.util.Map;
 
 import black.android.content.pm.BRFrameworkPackageUserState;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.CloseUtils;
-import com.elite.utils.FileUtils;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.CloseUtils;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 /**
  * Created by @jagdish_vip on 4/21/21.

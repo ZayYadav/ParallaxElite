@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -13,14 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.entity.pm.InstalledModule;
-import com.elite.entity.pm.XposedConfig;
-import com.elite.utils.CloseUtils;
-import com.elite.utils.FileUtils;
-import com.elite.utils.compat.XposedParserCompat;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.entity.pm.InstalledModule;
+import com.parallaxelite.entity.pm.XposedConfig;
+import com.parallaxelite.utils.CloseUtils;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.compat.XposedParserCompat;
 
 /**
  * Created by @jagdish_vip on 5/2/21.

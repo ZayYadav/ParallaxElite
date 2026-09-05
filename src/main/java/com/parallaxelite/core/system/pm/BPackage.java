@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.content.ComponentName;
 import android.content.IntentFilter;
@@ -19,8 +19,8 @@ import android.os.Parcelable;
 
 import java.util.ArrayList;
 
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 /**
  * Created by @jagdish_vip on 4/21/21.

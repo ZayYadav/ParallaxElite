@@ -1,4 +1,4 @@
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -12,7 +12,7 @@ import android.util.ArrayMap;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.elite.utils.Slog;
+import com.parallaxelite.utils.Slog;
 
 
 /**

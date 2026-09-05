@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -36,7 +36,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import com.elite.utils.Slog;
+import com.parallaxelite.utils.Slog;
 
 /**
  * {@hide}

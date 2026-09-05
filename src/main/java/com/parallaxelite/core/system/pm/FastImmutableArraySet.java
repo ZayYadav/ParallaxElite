@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import java.util.AbstractSet;
 import java.util.Iterator;

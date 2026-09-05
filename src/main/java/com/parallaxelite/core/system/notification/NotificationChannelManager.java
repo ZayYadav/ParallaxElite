@@ -1,4 +1,4 @@
-package com.elite.core.system.notification;
+package com.parallaxelite.core.system.notification;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -9,7 +9,7 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
-import com.elite.EliteInstaller;
+import com.parallaxelite.ParallaxELiteInstaller;
 
 /**
  * Created by BlackBox on 2022/3/18.
@@ -31,9 +31,9 @@ public class NotificationChannelManager {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void registerAppChannel() {
-        NotificationManager nm = (NotificationManager) EliteInstaller.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-        String CHANNEL_ONE_ID = EliteInstaller.getContext().getPackageName();
-        String CHANNEL_ONE_NAME = "Elite-Box-App";
+        NotificationManager nm = (NotificationManager) ParallaxELiteInstaller.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        String CHANNEL_ONE_ID = ParallaxELiteInstaller.getContext().getPackageName();
+        String CHANNEL_ONE_NAME = "ParallaxELite-Box-App";
         APP_CHANNEL = new NotificationChannel(CHANNEL_ONE_ID,CHANNEL_ONE_NAME, NotificationManager.IMPORTANCE_HIGH);
         APP_CHANNEL.enableLights(true);
         APP_CHANNEL.setLightColor(Color.RED);

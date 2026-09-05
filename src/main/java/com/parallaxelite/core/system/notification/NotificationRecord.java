@@ -1,4 +1,4 @@
-package com.elite.core.system.notification;
+package com.parallaxelite.core.system.notification;
 
 import android.app.NotificationChannel;
 import android.app.NotificationChannelGroup;
