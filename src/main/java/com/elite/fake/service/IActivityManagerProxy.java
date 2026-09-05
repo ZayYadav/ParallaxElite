@@ -5,6 +5,7 @@ import android.app.ActivityManager;
 import android.app.Application;
 import android.app.IServiceConnection;
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.IIntentReceiver;
 import android.content.Intent;
@@ -54,6 +55,8 @@ import com.elite.fake.service.base.PkgMethodProxy;
 import com.elite.fake.service.context.providers.ContentProviderStub;
 import com.elite.fake.service.context.providers.SystemProviderStub;
 import com.elite.proxy.ProxyManifest;
+import com.elite.proxy.ProxyBroadcastReceiver;
+import com.elite.proxy.ProxyPendingService;
 import com.elite.proxy.record.ProxyBroadcastRecord;
 import com.elite.proxy.record.ProxyPendingRecord;
 import com.elite.utils.ArrayUtils;
@@ -428,55 +431,138 @@ public class IActivityManagerProxy extends ClassInvocationStub {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            int type = (int) args[0];
-            Intent[] intents = (Intent[]) args[getIntentsIndex(args)];
-            MethodParameterUtils.replaceFirstAppPkg(args);
-
-            for (int i = 0; i < intents.length; i++) {
-                Intent intent = intents[i];
-                switch (type) {
-                    case ActivityManagerCompat.INTENT_SENDER_ACTIVITY:
-                        Intent shadow = new Intent();
-                        shadow.setComponent(new ComponentName(EliteInstaller.getHostPkg(), ProxyManifest.getProxyPendingActivity(BActivityThread.getAppPid())));
-                        ProxyPendingRecord.saveStub(shadow, intent, BActivityThread.getUserId());
-                        intents[i] = shadow;
-                        break;
-                }
+            if (args == null || args.length == 0 || !(args[0] instanceof Integer)) {
+                return method.invoke(who, args);
             }
 
-            // Android 12 (API 31) compat: PendingIntent requires FLAG_IMMUTABLE or FLAG_MUTABLE
-            if (BuildCompat.isS()) {
-                int flagsIndex = getIntentsIndex(args) + 2;
-                if (flagsIndex < args.length && args[flagsIndex] instanceof Integer) {
-                    int flags = (int) args[flagsIndex];
-                    if ((flags & (0x4000000 | 0x2000000)) == 0) {
-                        flags |= 0x4000000; // FLAG_IMMUTABLE
-                        args[flagsIndex] = flags;
+            int type = (Integer) args[0];
+            int intentsIndex = getIntentsIndex(args);
+            if (intentsIndex < 0 || !(args[intentsIndex] instanceof Intent[])) {
+                return method.invoke(who, args);
+            }
+
+            Intent[] intents = (Intent[]) args[intentsIndex];
+            MethodParameterUtils.replaceFirstAppPkg(args);
+
+            if (intents != null) {
+                for (int i = 0; i < intents.length; i++) {
+                    Intent target = intents[i];
+                    if (target == null) {
+                        continue;
+                    }
+
+                    Intent shadow = null;
+                    switch (type) {
+                        case ActivityManagerCompat.INTENT_SENDER_ACTIVITY:
+                            int bpid = BActivityThread.getAppPid();
+                            if (bpid >= 0 && bpid < ProxyManifest.FREE_COUNT) {
+                                shadow = new Intent();
+                                shadow.setComponent(new ComponentName(
+                                        EliteInstaller.getHostPkg(),
+                                        ProxyManifest.getProxyPendingActivity(bpid)));
+                                ProxyPendingRecord.saveStub(
+                                        shadow, target, BActivityThread.getUserId());
+                            }
+                            break;
+
+                        case ActivityManagerCompat.INTENT_SENDER_BROADCAST:
+                            shadow = new Intent();
+                            shadow.setComponent(new ComponentName(
+                                    EliteInstaller.getHostPkg(),
+                                    ProxyBroadcastReceiver.class.getName()));
+                            ProxyBroadcastRecord.saveStub(
+                                    shadow, target, BActivityThread.getUserId());
+                            break;
+
+                        case ActivityManagerCompat.INTENT_SENDER_SERVICE:
+                            shadow = new Intent();
+                            shadow.setComponent(new ComponentName(
+                                    EliteInstaller.getHostPkg(),
+                                    ProxyPendingService.class.getName()));
+                            ProxyPendingRecord.saveStub(
+                                    shadow, target, BActivityThread.getUserId());
+                            break;
+
+                        case ActivityManagerCompat.INTENT_SENDER_FOREGROUND_SERVICE:
+                            // Do not silently downgrade a foreground-service
+                            // PendingIntent. Android 14+ requires the real FGS
+                            // type/permission contract, which this generic bridge
+                            // cannot safely synthesize.
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    if (shadow != null) {
+                        shadow.setFlags(target.getFlags());
+                        if (target.getClipData() != null) {
+                            shadow.setClipData(target.getClipData());
+                        }
+                        intents[i] = shadow;
                     }
                 }
             }
 
-            IInterface invoke = (IInterface) method.invoke(who, args);
-            if (invoke != null) {
-                String[] packagesForUid = BPackageManager.get().getPackagesForUid(BActivityThread.getCallingBUid());
+            normalizePendingIntentMutability(args, intentsIndex);
+
+            Object result = method.invoke(who, args);
+            if (result instanceof IInterface) {
+                IInterface sender = (IInterface) result;
+                String[] packagesForUid = BPackageManager.get()
+                        .getPackagesForUid(BActivityThread.getCallingBUid());
                 if (packagesForUid.length < 1) {
                     packagesForUid = new String[]{EliteInstaller.getHostPkg()};
                 }
-                EliteInstaller.getBActivityManager().getIntentSender(invoke.asBinder(), packagesForUid[0], BActivityThread.getCallingBUid());
+                EliteInstaller.getBActivityManager().getIntentSender(
+                        sender.asBinder(),
+                        packagesForUid[0],
+                        BActivityThread.getCallingBUid());
             }
-            return invoke;
+            return result;
         }
 
-        private int getIntentsIndex(Object[] args) {
+        private static int getIntentsIndex(Object[] args) {
+            if (args == null) return -1;
             for (int i = 0; i < args.length; i++) {
                 if (args[i] instanceof Intent[]) {
                     return i;
                 }
             }
-            if (BuildCompat.isR()) {
-                return 6;
-            } else {
-                return 5;
+            return -1;
+        }
+
+        private static void normalizePendingIntentMutability(
+                Object[] args, int intentsIndex) {
+            if (!BuildCompat.isS() || args == null || intentsIndex < 0) {
+                return;
+            }
+
+            int flagsIndex = intentsIndex + 2;
+            if (flagsIndex >= args.length || !(args[flagsIndex] instanceof Integer)) {
+                return;
+            }
+
+            int flags = (Integer) args[flagsIndex];
+            int mask = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_MUTABLE;
+            if ((flags & mask) != 0) {
+                return;
+            }
+
+            int targetSdk = Build.VERSION_CODES.S;
+            try {
+                Application app = BActivityThread.getApplication();
+                if (app != null && app.getApplicationInfo() != null) {
+                    targetSdk = app.getApplicationInfo().targetSdkVersion;
+                }
+            } catch (Throwable ignored) {
+            }
+
+            // PendingIntent was mutable by default before Android 12. The host
+            // targets a modern API, so explicitly request mutability only for
+            // legacy-target guests to preserve their original behavior.
+            if (targetSdk < Build.VERSION_CODES.S) {
+                args[flagsIndex] = flags | PendingIntent.FLAG_MUTABLE;
             }
         }
     }
@@ -505,11 +591,6 @@ public class IActivityManagerProxy extends ClassInvocationStub {
 
     @ProxyMethod("getIntentSenderWithFeature")
     public static class GetIntentSenderWithFeature extends GetIntentSender {
-        @Override
-        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            MethodParameterUtils.replaceFirstAppPkg(args);
-            return method.invoke(who, args);
-        }
     }
 
     @ProxyMethod("broadcastIntent")
