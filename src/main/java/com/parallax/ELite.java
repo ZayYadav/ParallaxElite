@@ -1,6 +1,7 @@
 package com.parallax;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 
 import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.core.HostApp;
@@ -68,5 +69,31 @@ public final class ELite {
 
     public static String getMessage() {
         return MetaActivationManager.getServerMessage();
+    }
+
+    public static boolean launch(String packageName, int userId) {
+        return ParallaxELiteInstaller.get().launchApk(packageName, userId);
+    }
+
+    public static boolean isInstalled(String packageName, int userId) {
+        return ParallaxELiteInstaller.get().isInstalled(packageName, userId);
+    }
+
+    public static boolean installFromInstalledPackage(String packageName, int userId) {
+        return ParallaxELiteInstaller.get()
+                .installPackageAsUser(packageName, userId)
+                .success;
+    }
+
+    public static void uninstall(String packageName, int userId) {
+        ParallaxELiteInstaller.get().uninstallPackageAsUser(packageName, userId);
+    }
+
+    public static void stop(String packageName, int userId) {
+        ParallaxELiteInstaller.get().stopPackage(packageName, userId);
+    }
+
+    public static ApplicationInfo getApplicationInfo(String packageName) {
+        return ParallaxELiteInstaller.get().getApplicationInfo(packageName);
     }
 }
