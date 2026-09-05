@@ -260,7 +260,85 @@
     <!-- ========== BROADCAST PERMISSIONS ========== -->
     <uses-permission android:name="android.permission.BROADCAST_STICKY" />
 
+
+    <!-- External provider discovery required on Android 11+ for social sign-in. -->
+    <queries>
+        <package android:name="com.google.android.gms" />
+        <package android:name="com.google.android.play.games" />
+        <package android:name="com.android.vending" />
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.wakizashi" />
+        <package android:name="com.facebook.lite" />
+        <package android:name="com.twitter.android" />
+        <package android:name="com.twitter.android.lite" />
+        <package android:name="com.x.android" />
+
+        <intent>
+            <action android:name="android.accounts.AccountAuthenticator" />
+        </intent>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application>
+
+        <!-- Host-side social authentication bridges. Provider credentials remain
+             owned by Google/Meta/X; these components only preserve Activity results
+             and validated OAuth callbacks for the virtual application. -->
+        <activity
+            android:name="com.elite.compat.oauth.VirtualOAuthBridgeActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
+        <activity
+            android:name="com.elite.compat.oauth.TwitterNativeAuthBridgeActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
+            android:name="com.elite.compat.oauth.TwitterOAuthCallbackActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="twittersdk" />
+                <data android:scheme="twitterkit" />
+                <data android:scheme="twitter" />
+                <data android:scheme="twitterauth" />
+                <data android:scheme="oauth-twitter" />
+                <data android:scheme="xauth" />
+                <data android:scheme="x" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.elite.compat.oauth.FacebookOAuthCallbackActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="fbconnect" />
+            </intent-filter>
+        </activity>
+
         
         <activity
             android:theme="@style/BTheme"
