@@ -79,7 +79,9 @@ import com.elite.utils.Slog;
 import com.elite.utils.compat.ActivityManagerCompat;
 import com.elite.utils.compat.BuildCompat;
 import com.elite.utils.compat.ContextCompat;
+import com.elite.utils.compat.ScopedClassLoader;
 import com.elite.utils.compat.StrictModeCompat;
+import com.elite.utils.compat.WebViewProcessCompat;
 import org.lsposed.lsparanoid.Obfuscate;
 
 @Obfuscate
@@ -199,11 +201,16 @@ public class BActivityThread extends IBActivityThread.Stub {
 
     public Service createService(ServiceInfo serviceInfo, IBinder token) {
         if (!isInit()) bindApplication(serviceInfo.packageName, serviceInfo.processName);
-        try {
-            Service service = (Service) BRLoadedApk.get(this.mBoundApplication.info).getClassLoader().loadClass(serviceInfo.name).newInstance();
+        ClassLoader guestClassLoader =
+                BRLoadedApk.get(this.mBoundApplication.info).getClassLoader();
+        try (ScopedClassLoader ignored = ScopedClassLoader.enter(guestClassLoader)) {
+            Service service = (Service) guestClassLoader
+                    .loadClass(serviceInfo.name).newInstance();
             Context context = resolveComponentContext(service, serviceInfo.packageName);
             BRContextImpl.get(context).setOuterContext(service);
-            BRService.get(service).attach(context, EliteInstaller.mainThread(), serviceInfo.name,token, this.mInitialApplication, BRActivityManagerNative.get().getDefault());
+            BRService.get(service).attach(
+                    context, EliteInstaller.mainThread(), serviceInfo.name, token,
+                    this.mInitialApplication, BRActivityManagerNative.get().getDefault());
             ContextCompat.fix(context);
             service.onCreate();
             return service;
@@ -215,11 +222,16 @@ public class BActivityThread extends IBActivityThread.Stub {
 
     public JobService createJobService(ServiceInfo serviceInfo) {
         if (!isInit()) bindApplication(serviceInfo.packageName, serviceInfo.processName);
-        try {
-            JobService service = (JobService) BRLoadedApk.get(this.mBoundApplication.info).getClassLoader().loadClass(serviceInfo.name).newInstance();
+        ClassLoader guestClassLoader =
+                BRLoadedApk.get(this.mBoundApplication.info).getClassLoader();
+        try (ScopedClassLoader ignored = ScopedClassLoader.enter(guestClassLoader)) {
+            JobService service = (JobService) guestClassLoader
+                    .loadClass(serviceInfo.name).newInstance();
             Context context = resolveComponentContext(service, serviceInfo.packageName);
             BRContextImpl.get(context).setOuterContext(service);
-            BRService.get(service).attach(context, EliteInstaller.mainThread(), serviceInfo.name,getActivityThread(), this.mInitialApplication, BRActivityManagerNative.get().getDefault());
+            BRService.get(service).attach(
+                    context, EliteInstaller.mainThread(), serviceInfo.name, getActivityThread(),
+                    this.mInitialApplication, BRActivityManagerNative.get().getDefault());
             ContextCompat.fix(context);
             service.onCreate();
             service.onBind(null);
@@ -227,6 +239,18 @@ public class BActivityThread extends IBActivityThread.Stub {
         } catch (Exception e) {
             Log.e(TAG, "error", e);
             throw new RuntimeException("Unable to create JobService " + serviceInfo.name, e);
+        }
+    }
+
+    private void installGuestContextClassLoader(Object loadedApk) {
+        if (loadedApk == null) return;
+        try {
+            ClassLoader guest = BRLoadedApk.get(loadedApk).getClassLoader();
+            if (guest != null && Thread.currentThread().getContextClassLoader() != guest) {
+                Thread.currentThread().setContextClassLoader(guest);
+            }
+        } catch (Throwable error) {
+            Log.w(TAG, "Unable to install guest thread context ClassLoader", error);
         }
     }
 
@@ -314,6 +338,7 @@ public class BActivityThread extends IBActivityThread.Stub {
         Object boundApplication = BRActivityThread.get(EliteInstaller.mainThread()).mBoundApplication();
         Context packageContext = createPackageContext(applicationInfo);
         Object loadedApk = BRContextImpl.get(packageContext).mPackageInfo();
+        installGuestContextClassLoader(loadedApk);
         BRLoadedApk.get(loadedApk)._set_mSecurityViolation(false);
         // fix applicationInfo
         BRLoadedApk.get(loadedApk)._set_mApplicationInfo(applicationInfo);
@@ -328,9 +353,7 @@ public class BActivityThread extends IBActivityThread.Stub {
             }
         }
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            WebView.setDataDirectorySuffix(getUserId() + ":" + packageName + ":" + processName);
-        }
+        WebViewProcessCompat.prepare(getUserId(), packageName, processName);
         
         VirtualRuntime.setupRuntime(processName, applicationInfo);
         BRVMRuntime.get(BRVMRuntime.get().getRuntime()).setTargetSdkVersion(applicationInfo.targetSdkVersion);
@@ -556,11 +579,15 @@ public class BActivityThread extends IBActivityThread.Stub {
                 Context baseContext = mInitialApplication.getBaseContext();
                 ClassLoader cl = baseContext.getClassLoader();
                 data.intent.setExtrasClassLoader(cl);
-                BroadcastReceiver receiver = (BroadcastReceiver) cl.loadClass(data.activityInfo.name).newInstance();
-                BRBroadcastReceiver.get(receiver).setPendingResult(data.data.build());
-                receiver.onReceive(baseContext, data.intent);
-                BroadcastReceiver.PendingResult finish = BRBroadcastReceiver.get(receiver).getPendingResult();
-                if (finish != null) finish.finish();
+                try (ScopedClassLoader ignored = ScopedClassLoader.enter(cl)) {
+                    BroadcastReceiver receiver = (BroadcastReceiver) cl
+                            .loadClass(data.activityInfo.name).newInstance();
+                    BRBroadcastReceiver.get(receiver).setPendingResult(data.data.build());
+                    receiver.onReceive(baseContext, data.intent);
+                    BroadcastReceiver.PendingResult finish =
+                            BRBroadcastReceiver.get(receiver).getPendingResult();
+                    if (finish != null) finish.finish();
+                }
                 EliteInstaller.getBActivityManager().finishBroadcast(data.data);
             } catch (Throwable e) {
                 Log.e(TAG, "error", e);
