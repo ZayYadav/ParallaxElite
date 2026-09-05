@@ -8,6 +8,7 @@ import java.util.HashSet;
 
 import com.elite.EliteInstaller;
 import com.elite.app.BActivityThread;
+import com.elite.core.system.user.BUserHandle;
 
 public class MethodParameterUtils {
 
@@ -62,6 +63,25 @@ public class MethodParameterUtils {
                 int uid = (int) args[i];
                 if (uid == BActivityThread.getBUid()) {
                     args[i] = EliteInstaller.getHostUid();
+                }
+            }
+        }
+    }
+
+    public static void replaceAllVirtualUids(Object[] args) {
+        if (args == null) {
+            return;
+        }
+        int appId = BActivityThread.getBUid();
+        int fullVirtualUid = BUserHandle.getUid(
+                BActivityThread.getUserId(), appId);
+        int hostUid = EliteInstaller.getHostUid();
+
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof Integer) {
+                int value = (Integer) args[i];
+                if (value == appId || value == fullVirtualUid) {
+                    args[i] = hostUid;
                 }
             }
         }
