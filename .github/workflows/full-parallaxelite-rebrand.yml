@@ -181,7 +181,12 @@ jobs:
         run: |
           set -euo pipefail
           rm -f local.properties
-          git rm -f .github/workflows/full-parallaxelite-rebrand.yml
+
+          # GitHub App tokens cannot update workflow files without the separate
+          # workflows permission. Keep workflow YAML untouched here; ChatGPT's
+          # connected GitHub write path updates those after this verified source
+          # commit lands.
+          git restore --source=HEAD -- .github/workflows
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
