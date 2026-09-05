@@ -5,9 +5,11 @@ import android.content.pm.ApplicationInfo;
 
 import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.core.HostApp;
+import com.parallaxelite.core.env.BEnvironment;
 import com.parallaxelite.core.system.api.MetaActivationManager;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.File;
 
 /**
  * Single public entry point for the ParallaxELite SDK.
@@ -95,5 +97,9 @@ public final class ELite {
 
     public static ApplicationInfo getApplicationInfo(String packageName) {
         return ParallaxELiteInstaller.get().getApplicationInfo(packageName);
+    }
+
+    public static File getExternalObbDir(String packageName) {
+        return BEnvironment.getExternalObbDir(packageName);
     }
 }
