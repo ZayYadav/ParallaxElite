@@ -1,4 +1,4 @@
-package com.elite.compat.auth;
+package com.parallaxelite.compat.auth;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -17,13 +17,13 @@ import java.util.Set;
 
 import org.lsposed.lsparanoid.Obfuscate;
 
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.compat.oauth.TwitterNativeAuthBridgeActivity;
-import com.elite.compat.oauth.TwitterOAuthSessionStore;
-import com.elite.compat.oauth.VirtualOAuthBridgeActivity;
-import com.elite.compat.oauth.VirtualOAuthRouter;
-import com.elite.utils.compat.IntentRedirectCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.compat.oauth.TwitterNativeAuthBridgeActivity;
+import com.parallaxelite.compat.oauth.TwitterOAuthSessionStore;
+import com.parallaxelite.compat.oauth.VirtualOAuthBridgeActivity;
+import com.parallaxelite.compat.oauth.VirtualOAuthRouter;
+import com.parallaxelite.utils.compat.IntentRedirectCompat;
 
 /**
  * Routes native sign-in activities and provider-owned IntentSenders to the real
@@ -55,43 +55,43 @@ import com.elite.utils.compat.IntentRedirectCompat;
 @Obfuscate
 public final class ExternalAuthRouter {
     public static final String EXTRA_EXTERNAL_AUTH =
-            "com.elite.auth.EXTERNAL_AUTH";
+            "com.parallaxelite.auth.EXTERNAL_AUTH";
     public static final String EXTRA_BROWSER_AUTH =
-            "com.elite.auth.BROWSER_AUTH";
+            "com.parallaxelite.auth.BROWSER_AUTH";
     public static final String EXTRA_PROVIDER_INTENT =
-            "com.elite.auth.PROVIDER_INTENT";
+            "com.parallaxelite.auth.PROVIDER_INTENT";
     public static final String EXTRA_PROVIDER_INTENT_SENDER =
-            "com.elite.auth.PROVIDER_INTENT_SENDER";
+            "com.parallaxelite.auth.PROVIDER_INTENT_SENDER";
     public static final String EXTRA_PROVIDER_FILL_IN_INTENT =
-            "com.elite.auth.PROVIDER_FILL_IN_INTENT";
+            "com.parallaxelite.auth.PROVIDER_FILL_IN_INTENT";
     public static final String EXTRA_PROVIDER_FLAGS_MASK =
-            "com.elite.auth.PROVIDER_FLAGS_MASK";
+            "com.parallaxelite.auth.PROVIDER_FLAGS_MASK";
     public static final String EXTRA_PROVIDER_FLAGS_VALUES =
-            "com.elite.auth.PROVIDER_FLAGS_VALUES";
+            "com.parallaxelite.auth.PROVIDER_FLAGS_VALUES";
     public static final String EXTRA_PROVIDER_OPTIONS =
-            "com.elite.auth.PROVIDER_OPTIONS";
+            "com.parallaxelite.auth.PROVIDER_OPTIONS";
     public static final String EXTRA_RESULT_BINDER =
-            "com.elite.auth.RESULT_BINDER";
+            "com.parallaxelite.auth.RESULT_BINDER";
     public static final String EXTRA_RESULT_WHO =
-            "com.elite.auth.RESULT_WHO";
+            "com.parallaxelite.auth.RESULT_WHO";
     public static final String EXTRA_REQUEST_CODE =
-            "com.elite.auth.REQUEST_CODE";
+            "com.parallaxelite.auth.REQUEST_CODE";
     public static final String EXTRA_VIRTUAL_PACKAGE =
-            "com.elite.auth.VIRTUAL_PACKAGE";
+            "com.parallaxelite.auth.VIRTUAL_PACKAGE";
     public static final String EXTRA_DIRECT_PROVIDER_DISPATCH =
-            "com.elite.auth.DIRECT_PROVIDER_DISPATCH";
+            "com.parallaxelite.auth.DIRECT_PROVIDER_DISPATCH";
     public static final String EXTRA_BPID =
-            "com.elite.auth.BPID";
+            "com.parallaxelite.auth.BPID";
     public static final String EXTRA_USER_ID =
-            "com.elite.auth.USER_ID";
+            "com.parallaxelite.auth.USER_ID";
     public static final String EXTRA_RESULT_CODE =
-            "com.elite.auth.RESULT_CODE";
+            "com.parallaxelite.auth.RESULT_CODE";
     public static final String EXTRA_RESULT_DATA =
-            "com.elite.auth.RESULT_DATA";
+            "com.parallaxelite.auth.RESULT_DATA";
     public static final String EXTRA_RESULT_DELIVERED =
-            "com.elite.auth.RESULT_DELIVERED";
+            "com.parallaxelite.auth.RESULT_DELIVERED";
     public static final String EXTRA_MANUAL_RESULT_RELAY =
-            "com.elite.auth.MANUAL_RESULT_RELAY";
+            "com.parallaxelite.auth.MANUAL_RESULT_RELAY";
 
     public static final String METHOD_DELIVER_ACTIVITY_RESULT =
             "_Black_|_auth_activity_result_";
@@ -294,7 +294,7 @@ public final class ExternalAuthRouter {
             int bpid) {
         Intent bridge = new Intent();
         bridge.setComponent(new ComponentName(
-                EliteInstaller.getHostPkg(),
+                ParallaxELiteInstaller.getHostPkg(),
                 VirtualOAuthBridgeActivity.class.getName()));
         bridge.putExtra(EXTRA_EXTERNAL_AUTH, true);
         bridge.putExtra(EXTRA_BPID, bpid);
@@ -346,7 +346,7 @@ public final class ExternalAuthRouter {
 
         Intent bridge = new Intent();
         bridge.setComponent(new ComponentName(
-                EliteInstaller.getHostPkg(),
+                ParallaxELiteInstaller.getHostPkg(),
                 TwitterNativeAuthBridgeActivity.class.getName()));
         bridge.putExtra(EXTRA_BPID, bpid);
         bridge.putExtra(EXTRA_USER_ID, userId);
@@ -364,7 +364,7 @@ public final class ExternalAuthRouter {
     private static String resolveNativeTwitterProvider(Intent source) {
         if (source == null) return null;
         try {
-            PackageManager packageManager = EliteInstaller.getContext().getPackageManager();
+            PackageManager packageManager = ParallaxELiteInstaller.getContext().getPackageManager();
             for (String packageName : TWITTER_NATIVE_PROVIDER_PACKAGES) {
                 Intent candidate = new Intent(source);
                 candidate.setComponent(null);
@@ -513,7 +513,7 @@ public final class ExternalAuthRouter {
 
             Intent bridge = new Intent();
             bridge.setComponent(new ComponentName(
-                    EliteInstaller.getHostPkg(),
+                    ParallaxELiteInstaller.getHostPkg(),
                     VirtualOAuthBridgeActivity.class.getName()));
             bridge.putExtra(EXTRA_BROWSER_AUTH, true);
             bridge.putExtra(EXTRA_BPID, bpid);
@@ -603,7 +603,7 @@ public final class ExternalAuthRouter {
         }
 
         try {
-            PackageManager packageManager = EliteInstaller.getContext().getPackageManager();
+            PackageManager packageManager = ParallaxELiteInstaller.getContext().getPackageManager();
             ResolveInfo resolved = packageManager.resolveActivity(
                     new Intent(intent), PackageManager.MATCH_DEFAULT_ONLY);
             if (resolved == null || resolved.activityInfo == null) {

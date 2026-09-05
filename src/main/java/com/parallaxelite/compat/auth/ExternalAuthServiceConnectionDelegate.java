@@ -1,4 +1,4 @@
-package com.elite.compat.auth;
+package com.parallaxelite.compat.auth;
 
 import android.app.IServiceConnection;
 import android.content.ComponentName;
@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.lsposed.lsparanoid.Obfuscate;
 
 import black.android.app.BRIServiceConnectionO;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 /**
  * Keeps external authentication service callbacks inside the virtual process

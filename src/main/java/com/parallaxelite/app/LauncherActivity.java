@@ -1,4 +1,4 @@
-package com.elite.app;
+package com.parallaxelite.app;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -11,9 +11,9 @@ import android.os.Bundle;
 import android.webkit.WebView;
 import androidx.annotation.Nullable;
 
-import com.elite.EliteInstaller;
-import com.elite.R;
-import com.elite.utils.Slog;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.R;
+import com.parallaxelite.utils.Slog;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -32,13 +32,13 @@ public class LauncherActivity extends Activity {
 
     public static void launch(Intent intent, int userId) {
         Intent splash = new Intent();
-        splash.setClass(EliteInstaller.getContext(), LauncherActivity.class);
+        splash.setClass(ParallaxELiteInstaller.getContext(), LauncherActivity.class);
         splash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
         splash.putExtra(KEY_INTENT, intent);
         splash.putExtra(KEY_PKG, intent.getPackage());
         splash.putExtra(KEY_USER_ID, userId);
-        EliteInstaller.getContext().startActivity(splash);
+        ParallaxELiteInstaller.getContext().startActivity(splash);
     }
 
     @Override
@@ -55,7 +55,7 @@ public class LauncherActivity extends Activity {
         String packageName = intent.getStringExtra(KEY_PKG);
         int userId = intent.getIntExtra(KEY_USER_ID, 0);
 
-        PackageInfo packageInfo = EliteInstaller.getBPackageManager().getPackageInfo(packageName, 0, userId);
+        PackageInfo packageInfo = ParallaxELiteInstaller.getBPackageManager().getPackageInfo(packageName, 0, userId);
 
         if (packageInfo == null) {
             Slog.e(TAG, packageName + " not installed!");
@@ -86,7 +86,7 @@ public class LauncherActivity extends Activity {
         web.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
 
         // ===== App Icon =====
-        Drawable icon = packageInfo.applicationInfo.loadIcon(EliteInstaller.getPackageManager());
+        Drawable icon = packageInfo.applicationInfo.loadIcon(ParallaxELiteInstaller.getPackageManager());
 
         ImageView iconView = findViewById(R.id.iv_icon);
         iconView.setImageDrawable(icon);
@@ -94,7 +94,7 @@ public class LauncherActivity extends Activity {
         // ===== App Name =====
         TextView nameView = findViewById(R.id.tv_app_name);
         if (nameView != null) {
-            CharSequence label = packageInfo.applicationInfo.loadLabel(EliteInstaller.getPackageManager());
+            CharSequence label = packageInfo.applicationInfo.loadLabel(ParallaxELiteInstaller.getPackageManager());
             nameView.setText(label);
             nameView.setAlpha(0f);
             nameView.animate().alpha(1f).setDuration(400).start();
@@ -106,7 +106,7 @@ public class LauncherActivity extends Activity {
         iconView.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(450).setInterpolator(new OvershootInterpolator()).start();
 
         // ===== Launch App (Original Logic Same) =====
-        new Thread(() -> EliteInstaller.getBActivityManager().startActivity(launchIntent, userId)).start();
+        new Thread(() -> ParallaxELiteInstaller.getBActivityManager().startActivity(launchIntent, userId)).start();
     }
 
     @Override

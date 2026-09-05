@@ -1,4 +1,4 @@
-package com.elite.app.dispatcher;
+package com.parallaxelite.app.dispatcher;
 
 import android.app.Service;
 import android.content.Intent;
@@ -10,12 +10,12 @@ import android.os.IBinder;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.entity.ServiceRecord;
-import com.elite.entity.UnbindRecord;
-import com.elite.proxy.record.ProxyServiceRecord;
-import com.elite.utils.compat.ScopedClassLoader;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.entity.ServiceRecord;
+import com.parallaxelite.entity.UnbindRecord;
+import com.parallaxelite.proxy.record.ProxyServiceRecord;
+import com.parallaxelite.utils.compat.ScopedClassLoader;
 
 
 /**
@@ -29,7 +29,7 @@ import com.elite.utils.compat.ScopedClassLoader;
 public class AppServiceDispatcher {
     private static final AppServiceDispatcher sServiceDispatcher = new AppServiceDispatcher();
     private final Map<Intent.FilterComparison, ServiceRecord> mService = new HashMap<>();
-    private final Handler mHandler = EliteInstaller.get().getHandler();
+    private final Handler mHandler = ParallaxELiteInstaller.get().getHandler();
 
     public static AppServiceDispatcher get() {
         return sServiceDispatcher;
@@ -171,7 +171,7 @@ public class AppServiceDispatcher {
 
         Intent intent = stubRecord.mServiceIntent;
         try {
-            UnbindRecord unbindRecord = EliteInstaller.getBActivityManager().onServiceUnbind(proxyIntent, BActivityThread.getUserId());
+            UnbindRecord unbindRecord = ParallaxELiteInstaller.getBActivityManager().onServiceUnbind(proxyIntent, BActivityThread.getUserId());
             if (unbindRecord == null) {
                 return;
             }
@@ -201,7 +201,7 @@ public class AppServiceDispatcher {
                 try (ScopedClassLoader ignored = ScopedClassLoader.enter(service.getClassLoader())) {
                     service.onDestroy();
                 }
-                EliteInstaller.getBActivityManager().onServiceDestroy(
+                ParallaxELiteInstaller.getBActivityManager().onServiceDestroy(
                         proxyIntent, BActivityThread.getUserId());
                 mService.remove(new Intent.FilterComparison(intent));
             }
@@ -233,7 +233,7 @@ public class AppServiceDispatcher {
             try {
                 if (destroy) {
                     mHandler.post(() -> record.getService().onDestroy());
-                    EliteInstaller.getBActivityManager().onServiceDestroy(intent, BActivityThread.getUserId());
+                    ParallaxELiteInstaller.getBActivityManager().onServiceDestroy(intent, BActivityThread.getUserId());
                     mService.remove(new Intent.FilterComparison(intent));
                 }
             } catch (Throwable e) {

@@ -1,4 +1,4 @@
-package com.elite.compat.auth;
+package com.parallaxelite.compat.auth;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -21,9 +21,9 @@ import java.util.WeakHashMap;
 
 import org.lsposed.lsparanoid.Obfuscate;
 
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.utils.compat.ContextCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.utils.compat.ContextCompat;
 
 /**
  * Compatibility facade for the real Google Play services broker.
@@ -348,7 +348,7 @@ public final class GmsBrokerCompat {
 
     private static ClassLoader resolveRealGmsClassLoader() {
         try {
-            Context context = EliteInstaller.getContext();
+            Context context = ParallaxELiteInstaller.getContext();
             if (context == null) {
                 return null;
             }
@@ -405,7 +405,7 @@ public final class GmsBrokerCompat {
 
     private static void normalizeServiceRequest(Object request) {
         final String virtualPackage = BActivityThread.getAppPackageName();
-        final String hostPackage = EliteInstaller.getHostPkg();
+        final String hostPackage = ParallaxELiteInstaller.getHostPkg();
         if (request == null || virtualPackage == null || hostPackage == null
                 || virtualPackage.equals(hostPackage)) {
             return;
@@ -428,7 +428,7 @@ public final class GmsBrokerCompat {
                             && "android.content.AttributionSource".equals(
                             value.getClass().getName())) {
                         ContextCompat.fixAttributionSourceState(
-                                value, EliteInstaller.getHostUid());
+                                value, ParallaxELiteInstaller.getHostUid());
                     }
                 } catch (Throwable ignored) {
                     // Play services internals vary by version. Normalize the fields
@@ -453,7 +453,7 @@ public final class GmsBrokerCompat {
                         && "android.content.AttributionSource".equals(
                         value.getClass().getName())) {
                     ContextCompat.fixAttributionSourceState(
-                            value, EliteInstaller.getHostUid());
+                            value, ParallaxELiteInstaller.getHostUid());
                 }
             }
         } catch (Throwable ignored) {

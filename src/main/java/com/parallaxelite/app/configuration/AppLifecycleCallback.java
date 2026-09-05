@@ -1,4 +1,4 @@
-package com.elite.app.configuration;
+package com.parallaxelite.app.configuration;
 
 import android.app.Activity;
 import android.app.Application;

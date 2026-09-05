@@ -1,4 +1,4 @@
-package com.elite.app.configuration;
+package com.parallaxelite.app.configuration;
 
 import java.io.File;
 

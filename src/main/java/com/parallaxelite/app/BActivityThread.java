@@ -1,4 +1,4 @@
-package com.elite.app;
+package com.parallaxelite.app;
 
 import android.app.Activity;
 import android.app.Application;
@@ -57,31 +57,31 @@ import black.android.security.net.config.BRNetworkSecurityConfigProvider;
 import black.com.android.internal.content.BRReferrerIntent;
 import black.dalvik.system.BRVMRuntime;
 
-import com.elite.EliteInstaller;
-import com.elite.app.configuration.AppLifecycleCallback;
-import com.elite.app.dispatcher.AppServiceDispatcher;
-import com.elite.core.CrashHandler;
-import com.elite.core.IBActivityThread;
-import com.elite.core.VCore;
-import com.elite.core.VNative;
-import com.elite.core.env.VirtualRuntime;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.entity.AppConfig;
-import com.elite.entity.am.ReceiverData;
-import com.elite.entity.pm.InstalledModule;
-import com.elite.fake.delegate.AppInstrumentation;
-import com.elite.fake.delegate.ContentProviderDelegate;
-import com.elite.fake.frameworks.BXposedManager;
-import com.elite.fake.hook.HookManager;
-import com.elite.fake.service.HCallbackStub;
-import com.elite.utils.Reflector;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.ActivityManagerCompat;
-import com.elite.utils.compat.BuildCompat;
-import com.elite.utils.compat.ContextCompat;
-import com.elite.utils.compat.ScopedClassLoader;
-import com.elite.utils.compat.StrictModeCompat;
-import com.elite.utils.compat.WebViewProcessCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.configuration.AppLifecycleCallback;
+import com.parallaxelite.app.dispatcher.AppServiceDispatcher;
+import com.parallaxelite.core.CrashHandler;
+import com.parallaxelite.core.IBActivityThread;
+import com.parallaxelite.core.VCore;
+import com.parallaxelite.core.VNative;
+import com.parallaxelite.core.env.VirtualRuntime;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.entity.AppConfig;
+import com.parallaxelite.entity.am.ReceiverData;
+import com.parallaxelite.entity.pm.InstalledModule;
+import com.parallaxelite.fake.delegate.AppInstrumentation;
+import com.parallaxelite.fake.delegate.ContentProviderDelegate;
+import com.parallaxelite.fake.frameworks.BXposedManager;
+import com.parallaxelite.fake.hook.HookManager;
+import com.parallaxelite.fake.service.HCallbackStub;
+import com.parallaxelite.utils.Reflector;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.ActivityManagerCompat;
+import com.parallaxelite.utils.compat.BuildCompat;
+import com.parallaxelite.utils.compat.ContextCompat;
+import com.parallaxelite.utils.compat.ScopedClassLoader;
+import com.parallaxelite.utils.compat.StrictModeCompat;
+import com.parallaxelite.utils.compat.WebViewProcessCompat;
 import org.lsposed.lsparanoid.Obfuscate;
 
 @Obfuscate
@@ -93,7 +93,7 @@ public class BActivityThread extends IBActivityThread.Stub {
     private AppBindData mBoundApplication;
     private Application mInitialApplication;
     private final List<ProviderInfo> mProviders = new ArrayList<>();
-    private final Handler mH = EliteInstaller.get().getHandler();
+    private final Handler mH = ParallaxELiteInstaller.get().getHandler();
 
     public static class AppBindData {
         ApplicationInfo appInfo;
@@ -152,11 +152,11 @@ public class BActivityThread extends IBActivityThread.Stub {
     }
 
     public static int getBAppId() {
-        return BUserHandle.getAppId(EliteInstaller.getHostUid());
+        return BUserHandle.getAppId(ParallaxELiteInstaller.getHostUid());
     }
 
     public static int getCallingBUid() {
-        return getAppConfig() == null ? EliteInstaller.getHostUid() : getAppConfig().callingBUid;
+        return getAppConfig() == null ? ParallaxELiteInstaller.getHostUid() : getAppConfig().callingBUid;
     }
 
     public static int getUid() {
@@ -209,7 +209,7 @@ public class BActivityThread extends IBActivityThread.Stub {
             Context context = resolveComponentContext(service, serviceInfo.packageName);
             BRContextImpl.get(context).setOuterContext(service);
             BRService.get(service).attach(
-                    context, EliteInstaller.mainThread(), serviceInfo.name, token,
+                    context, ParallaxELiteInstaller.mainThread(), serviceInfo.name, token,
                     this.mInitialApplication, BRActivityManagerNative.get().getDefault());
             ContextCompat.fix(context);
             service.onCreate();
@@ -230,7 +230,7 @@ public class BActivityThread extends IBActivityThread.Stub {
             Context context = resolveComponentContext(service, serviceInfo.packageName);
             BRContextImpl.get(context).setOuterContext(service);
             BRService.get(service).attach(
-                    context, EliteInstaller.mainThread(), serviceInfo.name, getActivityThread(),
+                    context, ParallaxELiteInstaller.mainThread(), serviceInfo.name, getActivityThread(),
                     this.mInitialApplication, BRActivityManagerNative.get().getDefault());
             ContextCompat.fix(context);
             service.onCreate();
@@ -274,7 +274,7 @@ public class BActivityThread extends IBActivityThread.Stub {
             if (BuildCompat.isS()) {
                 try {
                     context = BRService.get(service).createServiceBaseContext(
-                            EliteInstaller.mainThread(), loadedApk);
+                            ParallaxELiteInstaller.mainThread(), loadedApk);
                 } catch (Throwable error) {
                     Log.w(TAG, "createServiceBaseContext failed for "
                             + componentPackage + "; falling back to createAppContext", error);
@@ -283,7 +283,7 @@ public class BActivityThread extends IBActivityThread.Stub {
 
             if (context == null) {
                 Object appContext = BRContextImpl.get().createAppContext(
-                        EliteInstaller.mainThread(), loadedApk);
+                        ParallaxELiteInstaller.mainThread(), loadedApk);
                 if (appContext instanceof Context) {
                     context = (Context) appContext;
                 }
@@ -299,7 +299,7 @@ public class BActivityThread extends IBActivityThread.Stub {
         // Cross-package components should normally have been routed to the real
         // provider before reaching the virtual dispatcher. Keep the historical
         // system-package fallback for that exceptional case only.
-        return EliteInstaller.getContext().createPackageContext(
+        return ParallaxELiteInstaller.getContext().createPackageContext(
                 componentPackage,
                 Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
     }
@@ -311,7 +311,7 @@ public class BActivityThread extends IBActivityThread.Stub {
     public void bindApplication(final String packageName, final String processName) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             final ConditionVariable conditionVariable = new ConditionVariable();
-            EliteInstaller.get().getHandler().post(() -> {
+            ParallaxELiteInstaller.get().getHandler().post(() -> {
                 handleBindApplication(packageName, processName);
                 conditionVariable.open();
             });
@@ -329,13 +329,13 @@ public class BActivityThread extends IBActivityThread.Stub {
         } catch (Throwable ignored) {
         }
         Binder.clearCallingIdentity();
-        PackageInfo packageInfo = EliteInstaller.getBPackageManager().getPackageInfo(packageName, PackageManager.GET_PROVIDERS, BActivityThread.getUserId());
+        PackageInfo packageInfo = ParallaxELiteInstaller.getBPackageManager().getPackageInfo(packageName, PackageManager.GET_PROVIDERS, BActivityThread.getUserId());
         ApplicationInfo applicationInfo = packageInfo.applicationInfo;
         if (packageInfo.providers == null) {
             packageInfo.providers = new ProviderInfo[]{};
         }
         mProviders.addAll(Arrays.asList(packageInfo.providers));
-        Object boundApplication = BRActivityThread.get(EliteInstaller.mainThread()).mBoundApplication();
+        Object boundApplication = BRActivityThread.get(ParallaxELiteInstaller.mainThread()).mBoundApplication();
         Context packageContext = createPackageContext(applicationInfo);
         Object loadedApk = BRContextImpl.get(packageContext).mPackageInfo();
         installGuestContextClassLoader(loadedApk);
@@ -385,12 +385,12 @@ public class BActivityThread extends IBActivityThread.Stub {
             onBeforeCreateApplication(packageName, processName, packageContext);
             application = BRLoadedApk.get(loadedApk).makeApplication(false, null);
             ContextCompat.fix(application);
-            ContextCompat.fix((Context) BRActivityThread.get(EliteInstaller.mainThread()).getSystemContext());
+            ContextCompat.fix((Context) BRActivityThread.get(ParallaxELiteInstaller.mainThread()).getSystemContext());
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && "com.tencent.mm:recovery".equals(processName)) {
                 fixWeChatRecovery(mInitialApplication);
             }
             mInitialApplication = application;
-            BRActivityThread.get(EliteInstaller.mainThread())._set_mInitialApplication(mInitialApplication);
+            BRActivityThread.get(ParallaxELiteInstaller.mainThread())._set_mInitialApplication(mInitialApplication);
             List<ProviderInfo> providers;
             installProviders(mInitialApplication, bindData.processName, bindData.providers);
             try {
@@ -423,7 +423,7 @@ public class BActivityThread extends IBActivityThread.Stub {
 			Object pathStrategy = parsePathStrategyMethod.invoke(null, application, "com.mosheng.provider");
 			Field fieldAuthority = pathStrategy.getClass().getDeclaredField("mAuthority");
 			fieldAuthority.setAccessible(true);
-            String newAuthority = "files." + EliteInstaller.getHostPkg();
+            String newAuthority = "files." + ParallaxELiteInstaller.getHostPkg();
 			fieldAuthority.set(pathStrategy, newAuthority);
 		}
 	}
@@ -443,7 +443,7 @@ public class BActivityThread extends IBActivityThread.Stub {
 
     public static Context createPackageContext(ApplicationInfo info) {
         try {
-            return EliteInstaller.getContext().createPackageContext(info.packageName, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            return ParallaxELiteInstaller.getContext().createPackageContext(info.packageName, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
         } catch (Exception e) {
             Log.e(TAG, "error", e);
             return null;
@@ -461,7 +461,7 @@ public class BActivityThread extends IBActivityThread.Stub {
                 try {
                     if (processName.equals(providerInfo.processName) ||
                             providerInfo.processName.equals(context.getPackageName()) || providerInfo.multiprocess) {
-                        installProvider(EliteInstaller.mainThread(), context, providerInfo, null);
+                        installProvider(ParallaxELiteInstaller.mainThread(), context, providerInfo, null);
                     }
                 } catch (Throwable ignored) { }
             }
@@ -509,7 +509,7 @@ public class BActivityThread extends IBActivityThread.Stub {
 
     @Override
     public IBinder getActivityThread() {
-        return BRActivityThread.get(EliteInstaller.mainThread()).getApplicationThread();
+        return BRActivityThread.get(ParallaxELiteInstaller.mainThread()).getApplicationThread();
     }
 
     @Override
@@ -529,7 +529,7 @@ public class BActivityThread extends IBActivityThread.Stub {
     public IBinder acquireContentProviderClient(ProviderInfo providerInfo) {
         if (!isInit()) bindApplication(getAppConfig().packageName, getAppConfig().processName);
         for (String auth : providerInfo.authority.split(";")) {
-            ContentProviderClient client = EliteInstaller.getContext().getContentResolver().acquireContentProviderClient(auth);
+            ContentProviderClient client = ParallaxELiteInstaller.getContext().getContentResolver().acquireContentProviderClient(auth);
             IInterface iInterface = BRContentProviderClient.get(client).mContentProvider();
             if (iInterface != null) return iInterface.asBinder();
         }
@@ -544,7 +544,7 @@ public class BActivityThread extends IBActivityThread.Stub {
     @Override
     public void finishActivity(final IBinder token) {
         mH.post(() -> {
-            Map<IBinder, Object> activities = BRActivityThread.get(EliteInstaller.mainThread()).mActivities();
+            Map<IBinder, Object> activities = BRActivityThread.get(ParallaxELiteInstaller.mainThread()).mActivities();
             Object clientRecord = activities.get(token);
             if (clientRecord == null) return;
             Activity activity = getActivityByToken(token);
@@ -559,8 +559,8 @@ public class BActivityThread extends IBActivityThread.Stub {
     @Override
     public void handleNewIntent(final IBinder token, final Intent intent) {
         mH.post(() -> {
-            Intent newIntent = BuildCompat.isLollipop_MR1() ? BRReferrerIntent.get()._new(intent, EliteInstaller.getHostPkg()) : intent;
-            Object mainThread = EliteInstaller.mainThread();
+            Intent newIntent = BuildCompat.isLollipop_MR1() ? BRReferrerIntent.get()._new(intent, ParallaxELiteInstaller.getHostPkg()) : intent;
+            Object mainThread = ParallaxELiteInstaller.mainThread();
             if (BRActivityThread.get(mainThread)._check_performNewIntents(null, null) != null) {
                 BRActivityThread.get(mainThread).performNewIntents(token, Collections.singletonList(newIntent));
             } else if (BRActivityThreadNMR1.get(mainThread)._check_performNewIntents(null, null, false) != null) {
@@ -588,7 +588,7 @@ public class BActivityThread extends IBActivityThread.Stub {
                             BRBroadcastReceiver.get(receiver).getPendingResult();
                     if (finish != null) finish.finish();
                 }
-                EliteInstaller.getBActivityManager().finishBroadcast(data.data);
+                ParallaxELiteInstaller.getBActivityManager().finishBroadcast(data.data);
             } catch (Throwable e) {
                 Log.e(TAG, "error", e);
                 Slog.e(TAG, "Error receiving broadcast " + data.intent);
@@ -597,24 +597,24 @@ public class BActivityThread extends IBActivityThread.Stub {
     }
 
     public static Activity getActivityByToken(IBinder token) {
-        Map<IBinder, Object> map = BRActivityThread.get(EliteInstaller.mainThread()).mActivities();
+        Map<IBinder, Object> map = BRActivityThread.get(ParallaxELiteInstaller.mainThread()).mActivities();
         return BRActivityThreadActivityClientRecord.get(map.get(token)).activity();
     }
 
     private void onBeforeCreateApplication(String packageName, String processName, Context context) {
-        for (AppLifecycleCallback cb : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback cb : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             cb.beforeCreateApplication(packageName, processName, context, getUserId());
         }
     }
 
     private void onBeforeApplicationOnCreate(String packageName, String processName, Application app) {
-        for (AppLifecycleCallback cb : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback cb : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             cb.beforeApplicationOnCreate(packageName, processName, app, getUserId());
         }
     }
 
     private void onAfterApplicationOnCreate(String packageName, String processName, Application app) {
-        for (AppLifecycleCallback cb : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback cb : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             cb.afterApplicationOnCreate(packageName, processName, app, getUserId());
         }
     }

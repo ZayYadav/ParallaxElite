@@ -1,4 +1,4 @@
-package com.elite.app.dispatcher;
+package com.parallaxelite.app.dispatcher;
 
 import android.app.job.IJobCallback;
 import android.app.job.JobParameters;
@@ -15,10 +15,10 @@ import java.util.List;
 import java.util.Map;
 
 import black.android.app.job.BRJobParameters;
-import com.elite.EliteInstaller;
-import com.elite.app.BActivityThread;
-import com.elite.entity.JobRecord;
-import com.elite.utils.compat.ScopedClassLoader;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
+import com.parallaxelite.entity.JobRecord;
+import com.parallaxelite.utils.compat.ScopedClassLoader;
 
 /**
  * Dispatches host JobScheduler callbacks into virtual guest JobServices while
@@ -160,7 +160,7 @@ public class AppJobServiceDispatcher {
             }
 
             try {
-                JobRecord record = EliteInstaller.getBJobManager().queryJobRecord(
+                JobRecord record = ParallaxELiteInstaller.getBJobManager().queryJobRecord(
                         BActivityThread.getAppProcessName(), hostJobId);
                 if (record == null || record.mServiceInfo == null) {
                     return null;

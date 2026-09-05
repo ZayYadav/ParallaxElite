@@ -1,4 +1,4 @@
-package com.elite;
+package com.parallaxelite;
 
 import android.app.Activity;
 import android.widget.Toast;
@@ -35,36 +35,36 @@ import java.util.Map;
 
 import black.android.app.BRActivityThread;
 import black.android.os.BRUserHandle;
-import com.elite.app.LauncherActivity;
-import com.elite.app.configuration.AppLifecycleCallback;
-import com.elite.app.configuration.ClientConfiguration;
-import com.elite.core.GmsCore;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.DaemonService;
-import com.elite.core.system.ServiceManager;
-import com.elite.core.system.user.BUserHandle;
-import com.elite.core.system.user.BUserInfo;
-import com.elite.entity.AppConfig;
-import com.elite.entity.pm.InstallOption;
-import com.elite.entity.pm.InstallResult;
-import com.elite.entity.pm.InstalledModule;
-import com.elite.fake.delegate.ContentProviderDelegate;
-import com.elite.fake.frameworks.BActivityManager;
-import com.elite.fake.frameworks.BJobManager;
-import com.elite.fake.frameworks.BPackageManager;
-import com.elite.fake.frameworks.BStorageManager;
-import com.elite.fake.frameworks.BUserManager;
-import com.elite.fake.frameworks.BXposedManager;
-import com.elite.fake.hook.HookManager;
-import com.elite.proxy.ProxyManifest;
-import com.elite.utils.FileUtils;
-import com.elite.utils.ShellUtils;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.BuildCompat;
-import com.elite.utils.compat.BundleCompat;
-import com.elite.utils.compat.XposedParserCompat;
-import com.elite.utils.provider.ProviderCall;
-import com.elite.core.system.api.MetaActivationManager;
+import com.parallaxelite.app.LauncherActivity;
+import com.parallaxelite.app.configuration.AppLifecycleCallback;
+import com.parallaxelite.app.configuration.ClientConfiguration;
+import com.parallaxelite.core.GmsCore;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.DaemonService;
+import com.parallaxelite.core.system.ServiceManager;
+import com.parallaxelite.core.system.user.BUserHandle;
+import com.parallaxelite.core.system.user.BUserInfo;
+import com.parallaxelite.entity.AppConfig;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.entity.pm.InstallResult;
+import com.parallaxelite.entity.pm.InstalledModule;
+import com.parallaxelite.fake.delegate.ContentProviderDelegate;
+import com.parallaxelite.fake.frameworks.BActivityManager;
+import com.parallaxelite.fake.frameworks.BJobManager;
+import com.parallaxelite.fake.frameworks.BPackageManager;
+import com.parallaxelite.fake.frameworks.BStorageManager;
+import com.parallaxelite.fake.frameworks.BUserManager;
+import com.parallaxelite.fake.frameworks.BXposedManager;
+import com.parallaxelite.fake.hook.HookManager;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.ShellUtils;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.BuildCompat;
+import com.parallaxelite.utils.compat.BundleCompat;
+import com.parallaxelite.utils.compat.XposedParserCompat;
+import com.parallaxelite.utils.provider.ProviderCall;
+import com.parallaxelite.core.system.api.MetaActivationManager;
 import org.lsposed.lsparanoid.Obfuscate;
 /**
  * Created by @jagdish_vip on 3/30/21.
@@ -76,10 +76,10 @@ import org.lsposed.lsparanoid.Obfuscate;
  */
 @Obfuscate
 @SuppressLint({"StaticFieldLeak", "NewApi"})
-public class EliteInstaller extends ClientConfiguration {
-    public static final String TAG = "EliteInstaller";
+public class ParallaxELiteInstaller extends ClientConfiguration {
+    public static final String TAG = "ParallaxELiteInstaller";
 
-    private static final EliteInstaller sEliteInstaller = new EliteInstaller();
+    private static final ParallaxELiteInstaller sParallaxELiteInstaller = new ParallaxELiteInstaller();
     private static Context sContext;
     private ProcessType mProcessType;
     private final Map<String, IBinder> mServices = new HashMap<>();
@@ -91,8 +91,8 @@ public class EliteInstaller extends ClientConfiguration {
     private final int mHostUserId = BRUserHandle.get().myUserId();
     private AppConfig appConfig;
     
-    public static EliteInstaller get() {
-        return sEliteInstaller;
+    public static ParallaxELiteInstaller get() {
+        return sParallaxELiteInstaller;
     }
 
     public Handler getHandler() {
@@ -154,7 +154,7 @@ public class EliteInstaller extends ClientConfiguration {
         initNotificationManager();
 
         String processName = getProcessName(getContext());
-        if (processName.equals(EliteInstaller.getHostPkg())) {
+        if (processName.equals(ParallaxELiteInstaller.getHostPkg())) {
             mProcessType = ProcessType.Main;
             startLogcat();
         } else if (processName.endsWith(getContext().getString(R.string.vbox_service_name))) {
@@ -163,7 +163,7 @@ public class EliteInstaller extends ClientConfiguration {
             mProcessType = ProcessType.BAppClient;
         }
 
-        if (EliteInstaller.get().isBlackProcess()) {
+        if (ParallaxELiteInstaller.get().isBlackProcess()) {
             BEnvironment.load();
         }
         
@@ -205,7 +205,7 @@ public class EliteInstaller extends ClientConfiguration {
     }
     
     public void onBeforeMainLaunchApk(String packageName,int userid) {
-        for (AppLifecycleCallback appLifecycleCallback : EliteInstaller.get().getAppLifecycleCallbacks()) {
+        for (AppLifecycleCallback appLifecycleCallback : ParallaxELiteInstaller.get().getAppLifecycleCallbacks()) {
             appLifecycleCallback.beforeMainLaunchApk(packageName,userid);
         }
     }
@@ -476,8 +476,8 @@ public class EliteInstaller extends ClientConfiguration {
     }
 
     private void initNotificationManager() {
-        NotificationManager nm = (NotificationManager) EliteInstaller.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-        String CHANNEL_ONE_ID = EliteInstaller.getContext().getPackageName() + ".vbox_core";
+        NotificationManager nm = (NotificationManager) ParallaxELiteInstaller.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        String CHANNEL_ONE_ID = ParallaxELiteInstaller.getContext().getPackageName() + ".vbox_core";
         String CHANNEL_ONE_NAME = "vbox_core";
         if (BuildCompat.isOreo_MR1()) {
             NotificationChannel notificationChannel = new NotificationChannel(CHANNEL_ONE_ID,CHANNEL_ONE_NAME, NotificationManager.IMPORTANCE_HIGH);

@@ -1,4 +1,4 @@
-package com.elite.app;
+package com.parallaxelite.app;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -11,9 +11,9 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.widget.Toast;
 
-import com.elite.EliteInstaller;
-import com.elite.core.system.am.IRequestPermissionsResult;
-import com.elite.utils.compat.BundleCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.system.am.IRequestPermissionsResult;
+import com.parallaxelite.utils.compat.BundleCompat;
 
 /**
  * Host-side runtime permission bridge for legacy-target virtual applications.
@@ -33,7 +33,7 @@ public class RequestPermissionsActivity extends Activity {
 
         Intent intent = new Intent();
         intent.setClassName(
-                EliteInstaller.getContext(),
+                ParallaxELiteInstaller.getContext(),
                 RequestPermissionsActivity.class.getName());
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("permissions", permissions);
