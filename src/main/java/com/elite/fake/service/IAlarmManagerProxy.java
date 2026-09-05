@@ -9,14 +9,13 @@ import black.android.os.BRServiceManager;
 import com.elite.fake.hook.BinderInvocationStub;
 import com.elite.fake.hook.MethodHook;
 import com.elite.fake.hook.ProxyMethod;
+import com.elite.utils.MethodParameterUtils;
 
 /**
- * Created by @jagdish_vip on 4/3/21.
- * * ∧＿∧
- * (`･ω･∥
- * 丶　つ０
- * しーＪ
- * 此处无Bug
+ * AlarmManager bridge.
+ *
+ * PendingIntents are virtualized at IActivityManager.getIntentSender, so alarms
+ * can be scheduled by the real system instead of being silently discarded.
  */
 public class IAlarmManagerProxy extends BinderInvocationStub {
 
@@ -26,7 +25,8 @@ public class IAlarmManagerProxy extends BinderInvocationStub {
 
     @Override
     protected Object getWho() {
-        return BRIAlarmManagerStub.get().asInterface(BRServiceManager.get().getService(Context.ALARM_SERVICE));
+        return BRIAlarmManagerStub.get().asInterface(
+                BRServiceManager.get().getService(Context.ALARM_SERVICE));
     }
 
     @Override
@@ -34,11 +34,18 @@ public class IAlarmManagerProxy extends BinderInvocationStub {
         replaceSystemService(Context.ALARM_SERVICE);
     }
 
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        MethodParameterUtils.replaceFirstAppPkg(args);
+        MethodParameterUtils.replaceAllVirtualUids(args);
+        return super.invoke(proxy, method, args);
+    }
+
     @ProxyMethod("set")
     public static class Set extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            return 0;
+            return method.invoke(who, args);
         }
     }
 
