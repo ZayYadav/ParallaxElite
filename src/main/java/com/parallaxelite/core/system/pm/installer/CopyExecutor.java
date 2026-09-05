@@ -1,4 +1,4 @@
-package com.elite.core.system.pm.installer;
+package com.parallaxelite.core.system.pm.installer;
 
 import android.content.pm.ApplicationInfo;
 
@@ -7,11 +7,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.pm.BPackageSettings;
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.FileUtils;
-import com.elite.utils.NativeUtils;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.pm.BPackageSettings;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.NativeUtils;
 
 /**
  * Copies guest package code and native libraries.

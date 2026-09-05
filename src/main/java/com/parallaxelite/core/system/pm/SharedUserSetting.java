@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.elite.core.system.pm;
+package com.parallaxelite.core.system.pm;
 
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -24,8 +24,8 @@ import java.io.FileOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.elite.core.env.BEnvironment;
-import com.elite.utils.FileUtils;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.utils.FileUtils;
 
 /**
  * Settings data for a particular shared user ID we know about.

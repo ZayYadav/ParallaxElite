@@ -1,9 +1,9 @@
-package com.elite.core.system.pm.installer;
+package com.parallaxelite.core.system.pm.installer;
 
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.pm.BPackageSettings;
-import com.elite.entity.pm.InstallOption;
-import com.elite.utils.FileUtils;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.pm.BPackageSettings;
+import com.parallaxelite.entity.pm.InstallOption;
+import com.parallaxelite.utils.FileUtils;
 
 public class RemoveUserExecutor implements Executor {
     public int exec(BPackageSettings ps, InstallOption option, int userId) {

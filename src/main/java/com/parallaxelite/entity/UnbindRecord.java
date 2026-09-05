@@ -1,4 +1,4 @@
-package com.elite.entity;
+package com.parallaxelite.entity;
 
 import android.content.ComponentName;
 import android.os.Parcel;

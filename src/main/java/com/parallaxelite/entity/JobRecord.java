@@ -1,4 +1,4 @@
-package com.elite.entity;
+package com.parallaxelite.entity;
 
 import android.app.job.JobInfo;
 import android.app.job.JobService;

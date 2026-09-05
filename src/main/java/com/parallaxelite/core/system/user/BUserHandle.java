@@ -1,4 +1,4 @@
-package com.elite.core.system.user;
+package com.parallaxelite.core.system.user;
 
 import android.os.Binder;
 import android.os.Parcel;

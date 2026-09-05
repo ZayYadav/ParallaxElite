@@ -1,4 +1,4 @@
-package com.elite.entity;
+package com.parallaxelite.entity;
 
 import android.os.IBinder;
 import android.os.Parcel;
@@ -14,7 +14,7 @@ import android.os.Parcelable;
  * 此处无Bug
  */
 public class AppConfig implements Parcelable {
-    public static final String KEY = "EliteCore_client_config";
+    public static final String KEY = "ParallaxELiteCore_client_config";
 
     public String packageName;
     public String processName;

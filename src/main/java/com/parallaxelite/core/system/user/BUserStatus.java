@@ -1,4 +1,4 @@
-package com.elite.core.system.user;
+package com.parallaxelite.core.system.user;
 
 /**
  * Created by @jagdish_vip on 4/22/21.

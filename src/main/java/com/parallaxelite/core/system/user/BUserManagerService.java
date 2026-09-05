@@ -1,4 +1,4 @@
-package com.elite.core.system.user;
+package com.parallaxelite.core.system.user;
 
 import android.os.Parcel;
 import android.os.RemoteException;
@@ -14,11 +14,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.utils.CloseUtils;
-import com.elite.utils.FileUtils;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.utils.CloseUtils;
+import com.parallaxelite.utils.FileUtils;
 
 public class BUserManagerService extends IBUserManagerService.Stub implements ISystemService {
     private static BUserManagerService sService = new BUserManagerService();
