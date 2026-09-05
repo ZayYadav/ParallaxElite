@@ -13,7 +13,7 @@ import com.elite.fake.service.vivo.IVivoPermissionServiceProxy;
 import com.elite.utils.Slog;
 import com.elite.utils.compat.BuildCompat;
 /**
- * Created by @RIYAZXERO on 3/30/21.
+ * Created by @jagdish_vip on 3/30/21.
  * * ∧＿∧
  * (`･ω･∥
  * 丶　つ０
