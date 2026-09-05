@@ -18,6 +18,7 @@ import android.content.res.Resources;
 import android.os.Build;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import black.android.content.pm.BRApplicationInfoL;
@@ -30,6 +31,7 @@ import com.elite.core.env.AppSystemEnv;
 import com.elite.core.env.BEnvironment;
 import com.elite.entity.pm.InstallOption;
 import com.elite.utils.ArrayUtils;
+import com.elite.utils.AbiUtils;
 import com.elite.utils.FileUtils;
 import com.elite.utils.compat.BuildCompat;
 
@@ -180,11 +182,9 @@ public class PackageManagerCompat {
                 for (int i = 0; i < N; i++) {
                     final String perm = p.requestedPermissions.get(i);
                     pi.requestedPermissions[i] = perm;
-                    // The notion of required permissions is deprecated but for compatibility.
-//                    pi.requestedPermissionsFlags[i] |= PackageInfo.REQUESTED_PERMISSION_REQUIRED;
-//                    if (grantedPermissions != null && grantedPermissions.contains(perm)) {
-//                        pi.requestedPermissionsFlags[i] |= PackageInfo.REQUESTED_PERMISSION_GRANTED;
-//                    }
+                    if (isNormalInstallTimePermission(perm)) {
+                        pi.requestedPermissionsFlags[i] |= PackageInfo.REQUESTED_PERMISSION_GRANTED;
+                    }
                 }
             }
         }
@@ -303,7 +303,7 @@ public class PackageManagerCompat {
 //        ai.uid = baseApplication.uid;
 
         if (BuildCompat.isL()) {
-            BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.CPU_ABI);
+            BRApplicationInfoL.get(ai)._set_primaryCpuAbi(AbiUtils.getPreferredProcessAbi());
             BRApplicationInfoL.get(ai)._set_scanPublicSourceDir(BRApplicationInfoL.get(baseApplication).scanPublicSourceDir());
             BRApplicationInfoL.get(ai)._set_scanSourceDir(BRApplicationInfoL.get(baseApplication).scanSourceDir());
         }
@@ -338,35 +338,72 @@ public class PackageManagerCompat {
         return true;
     }
 
+    private static boolean isNormalInstallTimePermission(String permission) {
+        return android.Manifest.permission.INTERNET.equals(permission)
+                || android.Manifest.permission.ACCESS_NETWORK_STATE.equals(permission)
+                || android.Manifest.permission.ACCESS_WIFI_STATE.equals(permission);
+    }
+
     private static void fixJar(ApplicationInfo info) {
-        String APACHE_LEGACY_JAR = "/system/framework/org.apache.http.legacy.boot.jar";
-        String APACHE_LEGACY_JAR_Q = "/system/framework/org.apache.http.legacy.jar";
-        Set<String> sharedLibraryFileList = new HashSet<>();
-        if (BuildCompat.isQ()) {
-            if (!FileUtils.isExist(APACHE_LEGACY_JAR_Q)) {
-                sharedLibraryFileList.add(APACHE_LEGACY_JAR);
-            } else {
-                sharedLibraryFileList.add(APACHE_LEGACY_JAR_Q);
+        // Preserve shared libraries already declared/resolved for the guest. Older
+        // code replaced the entire array with Apache HTTP, which breaks apps using
+        // modern shared-library dependencies.
+        Set<String> sharedLibraryFileList = new LinkedHashSet<>();
+        if (info.sharedLibraryFiles != null) {
+            for (String library : info.sharedLibraryFiles) {
+                if (library != null && !library.trim().isEmpty()) {
+                    sharedLibraryFileList.add(library);
+                }
             }
-        } else {
-            sharedLibraryFileList.add(APACHE_LEGACY_JAR);
         }
-//        if (BXposedManagerService.get().isXPEnable()) {
-//            ApplicationInfo base = EliteInstaller.getContext().getApplicationInfo();
-//            sharedLibraryFileList.add(base.sourceDir);
-//        }
-//        sharedLibraryFileList.add(BEnvironment.JUNIT_JAR.getAbsolutePath());
-        info.sharedLibraryFiles = sharedLibraryFileList.toArray(new String[]{});
+
+        File legacyBoot = new File("/system/framework/org.apache.http.legacy.boot.jar");
+        File legacyQ = new File("/system/framework/org.apache.http.legacy.jar");
+        if (BuildCompat.isQ() && legacyQ.isFile()) {
+            sharedLibraryFileList.add(legacyQ.getAbsolutePath());
+        } else if (legacyBoot.isFile()) {
+            sharedLibraryFileList.add(legacyBoot.getAbsolutePath());
+        }
+
+        info.sharedLibraryFiles = sharedLibraryFileList.isEmpty()
+                ? info.sharedLibraryFiles
+                : sharedLibraryFileList.toArray(new String[0]);
     }
 
     public static Resources getResources(Context context, ApplicationInfo appInfo) {
-        BPackageSettings ps = BPackageManagerService.get().getBPackageSetting(appInfo.packageName);
-        if (ps != null) {
-            AssetManager assets = BRAssetManager.get()._new();
-            BRAssetManager.get(assets).addAssetPath(ps.pkg.baseCodePath);
-            Resources hostRes = context.getResources();
-            return new Resources(assets, hostRes.getDisplayMetrics(), hostRes.getConfiguration());
+        if (context == null || appInfo == null || appInfo.packageName == null) {
+            return null;
         }
-        return null;
+        BPackageSettings ps = BPackageManagerService.get().getBPackageSetting(appInfo.packageName);
+        if (ps == null || ps.pkg == null) {
+            return null;
+        }
+
+        AssetManager assets = BRAssetManager.get()._new();
+        int baseCookie = BRAssetManager.get(assets).addAssetPath(ps.pkg.baseCodePath);
+        if (baseCookie == 0) {
+            return null;
+        }
+
+        // App Bundles place resources in split APKs. Add every existing split so
+        // Resource IDs used by modern Activities/Services resolve correctly.
+        String[] splits = appInfo.splitSourceDirs;
+        if ((splits == null || splits.length == 0)
+                && ps.pkg.applicationInfo != null) {
+            splits = ps.pkg.applicationInfo.splitSourceDirs;
+        }
+        if (splits != null) {
+            for (String split : splits) {
+                if (split == null) continue;
+                File file = new File(split);
+                if (file.isFile()) {
+                    BRAssetManager.get(assets).addAssetPath(file.getAbsolutePath());
+                }
+            }
+        }
+
+        Resources hostRes = context.getResources();
+        return new Resources(assets, hostRes.getDisplayMetrics(), hostRes.getConfiguration());
     }
+
 }
