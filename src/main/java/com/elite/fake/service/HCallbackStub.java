@@ -110,11 +110,15 @@ public class HCallbackStub implements IInjectHook, Handler.Callback {
 			return null;
 		}
 
-		for (Object obj : mActivityCallbacks) {
-			if (BRLaunchActivityItem.getRealClass().getName().equals(obj.getClass().getCanonicalName())) {
-				return obj;
-			}
-		}
+        Class<?> launchItemClass = BRLaunchActivityItem.getRealClass();
+        if (launchItemClass == null) {
+            return null;
+        }
+        for (Object obj : mActivityCallbacks) {
+            if (obj != null && launchItemClass.isInstance(obj)) {
+                return obj;
+            }
+        }
 		return null;
 	}
     
@@ -193,16 +197,28 @@ public class HCallbackStub implements IInjectHook, Handler.Callback {
             token = clientRecordContext.token();
         }
         
-        if (intent == null) return true;
+        if (intent == null) return false;
         // =================================
         ProxyActivityRecord stubRecord = ProxyActivityRecord.create(intent);
         ActivityInfo activityInfo = stubRecord.mActivityInfo;
         if (activityInfo != null) {
             if (BActivityThread.getAppConfig() == null) {
-                EliteInstaller.getBActivityManager().restartProcess(activityInfo.packageName, activityInfo.processName, stubRecord.mUserId);
-                Intent launchIntentForPackage = EliteInstaller.getBPackageManager().getLaunchIntentForPackage(activityInfo.packageName, stubRecord.mUserId);
+                EliteInstaller.getBActivityManager().restartProcess(
+                        activityInfo.packageName, activityInfo.processName, stubRecord.mUserId);
+                Intent originalTarget = stubRecord.mTarget;
+                if (originalTarget == null) {
+                    originalTarget = EliteInstaller.getBPackageManager()
+                            .getLaunchIntentForPackage(
+                                    activityInfo.packageName, stubRecord.mUserId);
+                }
+                if (originalTarget == null) {
+                    Slog.e(TAG, "Unable to recover target Intent for " + activityInfo.packageName);
+                    return false;
+                }
                 intent.setExtrasClassLoader(this.getClass().getClassLoader());
-                ProxyActivityRecord.saveStub(intent,launchIntentForPackage,stubRecord.mActivityInfo,stubRecord.mActivityRecord,stubRecord.mUserId);
+                ProxyActivityRecord.saveStub(
+                        intent, originalTarget, stubRecord.mActivityInfo,
+                        stubRecord.mActivityRecord, stubRecord.mUserId);
                 if (BuildCompat.isPie()) {
                     LaunchActivityItemContext launchActivityItemContext = BRLaunchActivityItem.get(r);
                     launchActivityItemContext._set_mIntent(intent);
@@ -253,7 +269,11 @@ public class HCallbackStub implements IInjectHook, Handler.Callback {
         if (BActivityThread.getAppConfig() != null) {
             String appPackageName = BActivityThread.getAppPackageName();
             assert appPackageName != null;
-            ServiceInfo serviceInfo = BRActivityThreadCreateServiceData.get(data).info();
+            ServiceInfo serviceInfo = data == null
+                    ? null : BRActivityThreadCreateServiceData.get(data).info();
+            if (serviceInfo == null || serviceInfo.name == null) {
+                return false;
+            }
             if (!serviceInfo.name.equals(ProxyManifest.getProxyService(BActivityThread.getAppPid()))
                 && !serviceInfo.name.equals(ProxyManifest.getProxyJobService(BActivityThread.getAppPid()))) {
                 Slog.d(TAG, "handleCreateService: " + data);
