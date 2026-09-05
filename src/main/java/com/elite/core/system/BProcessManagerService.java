@@ -182,12 +182,8 @@ public class BProcessManagerService implements ISystemService {
 
     public void restartAppProcess(String packageName, String processName, int userId) {
         synchronized (mProcessLock) {
-            int callingUid = Binder.getCallingUid();
             int callingPid = Binder.getCallingPid();
-            ProcessRecord app;
-            synchronized (mProcessLock) {
-                app = findProcessByPid(callingPid);
-            }
+            ProcessRecord app = findProcessByPid(callingPid);
             if (app == null) {
                 String stubProcessName = getProcessName(EliteInstaller.getContext(), callingPid);
                 int bpid = parseBPid(stubProcessName);
@@ -304,20 +300,18 @@ public class BProcessManagerService implements ISystemService {
 
     public void killAllByPackageName(String packageName) {
         synchronized (mProcessLock) {
-            synchronized (mPidsSelfLocked) {
-                List<ProcessRecord> tmp = new ArrayList<>(mPidsSelfLocked);
-                int appId = BPackageManagerService.get().getAppId(packageName);
-                for (ProcessRecord processRecord : mPidsSelfLocked) {
-                    int appId1 = BUserHandle.getAppId(processRecord.buid);
-                    if (appId == appId1) {
-                        mProcessMap.remove(
-                                BUserHandle.getUid(processRecord.userId, processRecord.buid));
-                        tmp.remove(processRecord);
-                        processRecord.kill();
-                    }
+            List<ProcessRecord> snapshot = new ArrayList<>(mPidsSelfLocked);
+            int appId = BPackageManagerService.get().getAppId(packageName);
+            for (ProcessRecord processRecord : snapshot) {
+                int appId1 = BUserHandle.getAppId(processRecord.buid);
+                if (appId == appId1) {
+                    mProcessMap.remove(
+                            BUserHandle.getUid(
+                                    processRecord.userId, processRecord.buid));
+                    mPidsSelfLocked.remove(processRecord);
+                    processRecord.kill();
+                    removeProc(processRecord);
                 }
-                mPidsSelfLocked.clear();
-                mPidsSelfLocked.addAll(tmp);
             }
         }
     }
@@ -367,10 +361,11 @@ public class BProcessManagerService implements ISystemService {
     }
 
     public ProcessRecord findProcessByPid(int pid) {
-        synchronized (mPidsSelfLocked) {
+        synchronized (mProcessLock) {
             for (ProcessRecord processRecord : mPidsSelfLocked) {
-                if (processRecord.pid == pid)
+                if (processRecord.pid == pid) {
                     return processRecord;
+                }
             }
             return null;
         }
