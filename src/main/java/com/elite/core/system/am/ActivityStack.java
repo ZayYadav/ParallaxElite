@@ -150,8 +150,15 @@ public class ActivityStack {
         if (taskRecord == null || taskRecord.needNewTask()) {
             return startActivityInNewTaskLocked(userId, intent, activityInfo, resultTo, launchModeFlags);
         }
-        // 移至前台
-        mAms.moveTaskToFront(taskRecord.id, 0);
+        // Move the host proxy task to front when it still exists. Task
+        // removal races are normal during rapid finish/relaunch flows.
+        try {
+            if (mAms != null) {
+                mAms.moveTaskToFront(taskRecord.id, 0);
+            }
+        } catch (Throwable error) {
+            Log.w(TAG, "Unable to move stale task " + taskRecord.id + " to front", error);
+        }
         boolean notStartToFront = false;
         if (clearTop || singleTop || clearTask) {
             notStartToFront = true;
@@ -275,20 +282,24 @@ public class ActivityStack {
         }
 		Log.e(TAG,"StartProcess pkg=" + info.packageName + " activity=" + info.name + " process=" + processName);
 		ProcessRecord targetApp = BProcessManagerService.get().startProcessLocked(info.packageName,processName,userId,-1,Binder.getCallingPid());
-		if (targetApp == null) {
-			Log.e(TAG, "Process creation failed for " + processName + ", using default process");
-			return getStartStubActivityIntentInner(intent, 0, userId, stubRecord, info);
-		}
+        if (targetApp == null) {
+            Log.e(TAG, "Process creation failed for " + processName
+                    + "; refusing unsafe fallback to another guest slot");
+            return null;
+        }
 		return getStartStubActivityIntentInner(intent,targetApp.bpid,userId,stubRecord,info);
 	}
 
     private int startActivityInNewTaskLocked(int userId, Intent intent, ActivityInfo activityInfo, IBinder resultTo, int launchMode) {
 		ActivityRecord record = newActivityRecord(intent, activityInfo, resultTo, userId);
 		Intent shadow = startActivityProcess(userId, intent, activityInfo, record);
-		if (shadow == null) {
-			Log.e(TAG, "Shadow intent is null, cannot start activity");
-			return -1;
-		}
+        if (shadow == null) {
+            Log.e(TAG, "Shadow intent is null, cannot start activity");
+            synchronized (mLaunchingActivities) {
+                mLaunchingActivities.remove(record);
+            }
+            return -1;
+        }
 		shadow.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
 		shadow.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
 		shadow.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -305,6 +316,12 @@ public class ActivityStack {
     private int startActivityInSourceTask(Intent intent, String resolvedType,IBinder resultTo, String resultWho, int requestCode, int flags,Bundle options,int userId, ActivityRecord sourceRecord, ActivityInfo activityInfo, int launchMode) {
         ActivityRecord selfRecord = newActivityRecord(intent, activityInfo, resultTo, userId);
         Intent shadow = startActivityProcess(userId, intent, activityInfo, selfRecord);
+        if (shadow == null) {
+            synchronized (mLaunchingActivities) {
+                mLaunchingActivities.remove(selfRecord);
+            }
+            return -1;
+        }
         shadow.setAction(UUID.randomUUID().toString());
         shadow.addFlags(launchMode);
         if (resultTo == null) {
