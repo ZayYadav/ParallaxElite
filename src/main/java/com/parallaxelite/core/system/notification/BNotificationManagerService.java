@@ -1,4 +1,4 @@
-package com.elite.core.system.notification;
+package com.parallaxelite.core.system.notification;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -22,11 +22,11 @@ import black.android.app.BRNotificationO;
 import black.android.app.NotificationChannelContext;
 import black.android.app.NotificationChannelGroupContext;
 import black.android.app.NotificationOContext;
-import com.elite.EliteInstaller;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.ProcessRecord;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.ProcessRecord;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 /**
  * Created by BlackBox on 2022/3/15.
@@ -40,7 +40,7 @@ public class BNotificationManagerService extends IBNotificationManagerService.St
     private final Map<String, NotificationRecord> mNotificationRecords = new HashMap<>();
 
     private final NotificationManager mRealNotificationManager =
-            (NotificationManager) EliteInstaller.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            (NotificationManager) ParallaxELiteInstaller.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
 
     public static BNotificationManagerService get() {
         return sService;

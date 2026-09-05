@@ -1,4 +1,4 @@
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.content.Intent;
 

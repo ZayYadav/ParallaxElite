@@ -1,4 +1,4 @@
-package com.elite.core.system.accounts;
+package com.parallaxelite.core.system.accounts;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -9,9 +9,9 @@ import android.content.res.XmlResourceParser;
 import android.os.Bundle;
 
 import black.android.content.res.BRAssetManager;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.core.system.pm.BPackageSettings;
-import com.elite.core.system.pm.PackageManagerCompat;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.core.system.pm.BPackageSettings;
+import com.parallaxelite.core.system.pm.PackageManagerCompat;
 
 public class RegisteredServicesParser {
 

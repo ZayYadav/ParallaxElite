@@ -1,4 +1,4 @@
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.app.job.JobInfo;
 import android.content.ComponentName;
@@ -14,19 +14,19 @@ import java.util.List;
 import java.util.Map;
 
 import black.android.app.job.BRJobInfo;
-import com.elite.EliteInstaller;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.ProcessRecord;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.entity.JobRecord;
-import com.elite.proxy.ProxyManifest;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.ProcessRecord;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.entity.JobRecord;
+import com.parallaxelite.proxy.ProxyManifest;
 
 /**
  * Virtual JobScheduler namespace.
  *
  * Android's real JobScheduler namespaces jobs by host UID + jobId. Every guest
- * in ParallaxElite shares the host UID, so forwarding guest IDs directly lets
+ * in ParallaxELite shares the host UID, so forwarding guest IDs directly lets
  * unrelated virtual apps replace/cancel each other's jobs. This service maps
  * each guest (user/process/jobId) to a stable host-side ID.
  */
@@ -107,7 +107,7 @@ public class BJobManagerService extends IBJobManagerService.Stub implements ISys
 
             BRJobInfo.get(info)._set_jobId(hostJobId);
             BRJobInfo.get(info)._set_service(new ComponentName(
-                    EliteInstaller.getHostPkg(),
+                    ParallaxELiteInstaller.getHostPkg(),
                     ProxyManifest.getProxyJobService(processRecord.bpid)));
             return info;
         }

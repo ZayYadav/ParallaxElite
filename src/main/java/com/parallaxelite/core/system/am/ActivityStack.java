@@ -1,4 +1,4 @@
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.app.ActivityManager;
 import android.content.ComponentName;
@@ -31,20 +31,20 @@ import java.util.UUID;
 import black.android.app.BRActivityManagerNative;
 import black.android.app.BRIActivityManager;
 import black.com.android.internal.BRRstyleable;
-import com.elite.EliteInstaller;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.ProcessRecord;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.core.system.pm.PackageManagerCompat;
-import com.elite.proxy.ProxyActivity;
-import com.elite.proxy.ProxyManifest;
-import com.elite.proxy.record.ProxyActivityRecord;
-import com.elite.utils.ArrayUtils;
-import com.elite.utils.ComponentUtils;
-import com.elite.utils.Slog;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.ProcessRecord;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.core.system.pm.PackageManagerCompat;
+import com.parallaxelite.proxy.ProxyActivity;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.proxy.record.ProxyActivityRecord;
+import com.parallaxelite.utils.ArrayUtils;
+import com.parallaxelite.utils.ComponentUtils;
+import com.parallaxelite.utils.Slog;
 
 import static android.content.pm.PackageManager.GET_ACTIVITIES;
-import com.elite.utils.compat.ActivityManagerCompat;
+import com.parallaxelite.utils.compat.ActivityManagerCompat;
 
 /**
  * Created by @jagdish_vip on 4/5/21.
@@ -79,7 +79,7 @@ public class ActivityStack {
     };
 
     public ActivityStack() {
-        mAms = (ActivityManager) EliteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
+        mAms = (ActivityManager) ParallaxELiteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
     }
 
     public boolean containsFlag(Intent intent, int flag) {
@@ -305,7 +305,7 @@ public class ActivityStack {
 		shadow.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		shadow.addFlags(launchMode);
 		try {
-			EliteInstaller.getContext().startActivity(shadow);
+			ParallaxELiteInstaller.getContext().startActivity(shadow);
 			return 0;
 		} catch (Exception e) {
 			Log.e(TAG, "Failed to start activity: " + e.getMessage());
@@ -335,7 +335,7 @@ public class ActivityStack {
             flags &= ~ActivityManagerCompat.START_FLAG_DEBUG;
             flags &= ~ActivityManagerCompat.START_FLAG_NATIVE_DEBUGGING;
             flags &= ~ActivityManagerCompat.START_FLAG_TRACK_ALLOCATION;
-            BRIActivityManager.get(BRActivityManagerNative.get().getDefault()).startActivity(appThread, EliteInstaller.getHostPkg(), intent,resolvedType, resultTo, resultWho, requestCode, flags, null, options);
+            BRIActivityManager.get(BRActivityManagerNative.get().getDefault()).startActivity(appThread, ParallaxELiteInstaller.getHostPkg(), intent,resolvedType, resultTo, resultWho, requestCode, flags, null, options);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -356,7 +356,7 @@ public class ActivityStack {
         Intent shadow = new Intent();
         TypedArray typedArray = null;
         try {
-            Resources resources = PackageManagerCompat.getResources(EliteInstaller.getContext(), activityInfo.applicationInfo);
+            Resources resources = PackageManagerCompat.getResources(ParallaxELiteInstaller.getContext(), activityInfo.applicationInfo);
             int id;
             if (activityInfo.theme != 0) {
                 id = activityInfo.theme;
@@ -367,14 +367,14 @@ public class ActivityStack {
             typedArray = resources.newTheme().obtainStyledAttributes(id, BRRstyleable.get().Window());
             boolean windowIsTranslucent = typedArray.getBoolean(BRRstyleable.get().Window_windowIsTranslucent(), false);
             if (windowIsTranslucent) {
-                shadow.setComponent(new ComponentName(EliteInstaller.getHostPkg(), ProxyManifest.TransparentProxyActivity(vpid)));
+                shadow.setComponent(new ComponentName(ParallaxELiteInstaller.getHostPkg(), ProxyManifest.TransparentProxyActivity(vpid)));
             } else {
-                shadow.setComponent(new ComponentName(EliteInstaller.getHostPkg(), ProxyManifest.getProxyActivity(vpid)));
+                shadow.setComponent(new ComponentName(ParallaxELiteInstaller.getHostPkg(), ProxyManifest.getProxyActivity(vpid)));
             }
             Slog.d(TAG, activityInfo + ", windowIsTranslucent: " + windowIsTranslucent);
         } catch (Throwable e) {
             e.printStackTrace();
-            shadow.setComponent(new ComponentName(EliteInstaller.getHostPkg(), ProxyManifest.getProxyActivity(vpid)));
+            shadow.setComponent(new ComponentName(ParallaxELiteInstaller.getHostPkg(), ProxyManifest.getProxyActivity(vpid)));
         } finally {
             if (typedArray != null) {
                 typedArray.recycle();
@@ -535,7 +535,7 @@ public class ActivityStack {
                     return resultTo.info.packageName;
                 }
             }
-            return EliteInstaller.getHostPkg();
+            return ParallaxELiteInstaller.getHostPkg();
         }
     }
 
@@ -549,7 +549,7 @@ public class ActivityStack {
                     return resultTo.component;
                 }
             }
-            return new ComponentName(EliteInstaller.getHostPkg(), ProxyActivity.P0.class.getName());
+            return new ComponentName(ParallaxELiteInstaller.getHostPkg(), ProxyActivity.P0.class.getName());
         }
     }
 

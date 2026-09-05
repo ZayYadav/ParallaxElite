@@ -1,4 +1,4 @@
-package com.elite.core.system.location;
+package com.parallaxelite.core.system.location;
 
 import android.os.IBinder;
 import android.os.IInterface;
@@ -19,16 +19,16 @@ import java.util.concurrent.Executors;
 
 import black.android.location.BRILocationListener;
 import black.android.location.BRILocationListenerStub;
-import com.elite.EliteInstaller;
-import com.elite.core.env.BEnvironment;
-import com.elite.core.system.ISystemService;
-import com.elite.entity.location.BCell;
-import com.elite.entity.location.BLocation;
-import com.elite.entity.location.BLocationConfig;
-import com.elite.fake.frameworks.BLocationManager;
-import com.elite.utils.CloseUtils;
-import com.elite.utils.FileUtils;
-import com.elite.utils.Slog;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.env.BEnvironment;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.entity.location.BCell;
+import com.parallaxelite.entity.location.BLocation;
+import com.parallaxelite.entity.location.BLocationConfig;
+import com.parallaxelite.fake.frameworks.BLocationManager;
+import com.parallaxelite.utils.CloseUtils;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.Slog;
 
 /**
  * Fake location
@@ -258,7 +258,7 @@ public class BLocationManagerService extends IBLocationManagerService.Stub imple
                 }
                 lastLocation = location;
                 l = System.currentTimeMillis();
-                EliteInstaller.get().getHandler().post(() -> BRILocationListener.get(iInterface).onLocationChanged(location.convert2SystemLocation()));
+                ParallaxELiteInstaller.get().getHandler().post(() -> BRILocationListener.get(iInterface).onLocationChanged(location.convert2SystemLocation()));
             }
         });
     }

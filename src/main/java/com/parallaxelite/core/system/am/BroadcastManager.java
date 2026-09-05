@@ -1,4 +1,4 @@
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -12,15 +12,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.elite.EliteInstaller;
-import com.elite.core.system.pm.BPackage;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.core.system.pm.BPackageSettings;
-import com.elite.core.system.pm.PackageMonitor;
-import com.elite.entity.am.PendingResultData;
-import com.elite.proxy.ProxyBroadcastReceiver;
-import com.elite.utils.Slog;
-import com.elite.utils.compat.BuildCompat;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.system.pm.BPackage;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.core.system.pm.BPackageSettings;
+import com.parallaxelite.core.system.pm.PackageMonitor;
+import com.parallaxelite.entity.am.PendingResultData;
+import com.parallaxelite.proxy.ProxyBroadcastReceiver;
+import com.parallaxelite.utils.Slog;
+import com.parallaxelite.utils.compat.BuildCompat;
 
 /**
  * Fixed BroadcastManager
@@ -97,7 +97,7 @@ public class BroadcastManager implements PackageMonitor {
                     }
 
                     ProxyBroadcastReceiver proxy = new ProxyBroadcastReceiver();
-                    Context ctx = EliteInstaller.getContext();
+                    Context ctx = ParallaxELiteInstaller.getContext();
 
                     try {
                         if (BuildCompat.isT()) {
@@ -163,7 +163,7 @@ public class BroadcastManager implements PackageMonitor {
                 Slog.d(TAG, "unregisterReceiver: " + packageName + ", size=" + list.size());
                 for (BroadcastReceiver r : list) {
                     try {
-                        EliteInstaller.getContext().unregisterReceiver(r);
+                        ParallaxELiteInstaller.getContext().unregisterReceiver(r);
                     } catch (Throwable ignored) {
                     }
                 }

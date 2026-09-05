@@ -1,5 +1,5 @@
 // Ye alag file mein rahega - simple version
-package com.elite.core.system.api;
+package com.parallaxelite.core.system.api;
 
 import android.MetaCore.RemoteManager;
 import org.lsposed.lsparanoid.Obfuscate;

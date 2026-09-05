@@ -1,4 +1,4 @@
-package com.elite.core.system.location;
+package com.parallaxelite.core.system.location;
 
 /**
  * Created by BlackBox on 2022/3/19.

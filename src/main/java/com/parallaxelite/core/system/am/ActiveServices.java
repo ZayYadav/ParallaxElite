@@ -1,4 +1,4 @@
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
@@ -18,15 +18,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.elite.EliteInstaller;
-import com.elite.core.IEmpty;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.ProcessRecord;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.entity.UnbindRecord;
-import com.elite.entity.am.RunningServiceInfo;
-import com.elite.proxy.ProxyManifest;
-import com.elite.proxy.record.ProxyServiceRecord;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.IEmpty;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.ProcessRecord;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.entity.UnbindRecord;
+import com.parallaxelite.entity.am.RunningServiceInfo;
+import com.parallaxelite.proxy.ProxyManifest;
+import com.parallaxelite.proxy.record.ProxyServiceRecord;
 
 /**
  * Created by @jagdish_vip on 4/7/21.
@@ -64,7 +64,7 @@ public class ActiveServices {
             @Override
             public void run() {
                 try {
-                    EliteInstaller.getContext().startService(stubServiceIntent);
+                    ParallaxELiteInstaller.getContext().startService(stubServiceIntent);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -230,7 +230,7 @@ public class ActiveServices {
                                            RunningServiceRecord runningServiceRecord,
                                            int startId) {
         Intent stub = new Intent();
-        ComponentName stubComp = new ComponentName(EliteInstaller.getHostPkg(), ProxyManifest.getProxyService(processRecord.bpid));
+        ComponentName stubComp = new ComponentName(ParallaxELiteInstaller.getHostPkg(), ProxyManifest.getProxyService(processRecord.bpid));
         stub.setComponent(stubComp);
         stub.setAction(UUID.randomUUID().toString());
         ProxyServiceRecord.saveStub(
@@ -260,7 +260,7 @@ public class ActiveServices {
 
     public RunningServiceInfo getRunningServiceInfo(String callerPackage, int userId) {
         ActivityManager manager = (ActivityManager)
-                EliteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
+                ParallaxELiteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
         List<ActivityManager.RunningServiceInfo> runningServices = manager.getRunningServices(Integer.MAX_VALUE);
         Map<Integer, ActivityManager.RunningServiceInfo> serviceInfoMap = new HashMap<>();
         for (ActivityManager.RunningServiceInfo runningService : runningServices) {

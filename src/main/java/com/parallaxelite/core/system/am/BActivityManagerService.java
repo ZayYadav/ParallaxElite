@@ -1,4 +1,4 @@
-package com.elite.core.system.am;
+package com.parallaxelite.core.system.am;
 
 import android.Manifest;
 import android.app.ActivityManager;
@@ -17,19 +17,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.elite.EliteInstaller;
-import com.elite.core.system.BProcessManagerService;
-import com.elite.core.system.ISystemService;
-import com.elite.core.system.ProcessRecord;
-import com.elite.core.system.pm.BPackageManagerService;
-import com.elite.entity.AppConfig;
-import com.elite.entity.UnbindRecord;
-import com.elite.entity.am.PendingResultData;
-import com.elite.entity.am.ReceiverData;
-import com.elite.entity.am.RunningAppProcessInfo;
-import com.elite.entity.am.RunningServiceInfo;
-import com.elite.utils.FileUtils;
-import com.elite.utils.Slog;
+import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.core.system.BProcessManagerService;
+import com.parallaxelite.core.system.ISystemService;
+import com.parallaxelite.core.system.ProcessRecord;
+import com.parallaxelite.core.system.pm.BPackageManagerService;
+import com.parallaxelite.entity.AppConfig;
+import com.parallaxelite.entity.UnbindRecord;
+import com.parallaxelite.entity.am.PendingResultData;
+import com.parallaxelite.entity.am.ReceiverData;
+import com.parallaxelite.entity.am.RunningAppProcessInfo;
+import com.parallaxelite.entity.am.RunningServiceInfo;
+import com.parallaxelite.utils.FileUtils;
+import com.parallaxelite.utils.Slog;
 
 import static android.content.pm.PackageManager.GET_META_DATA;
 
@@ -96,7 +96,7 @@ public class BActivityManagerService extends IBActivityManagerService.Stub imple
             }
         }
         Intent shadow = new Intent();
-        shadow.setPackage(EliteInstaller.getHostPkg());
+        shadow.setPackage(ParallaxELiteInstaller.getHostPkg());
         shadow.setComponent(null);
         shadow.setAction(intent.getAction());
         return shadow;
@@ -165,7 +165,7 @@ public class BActivityManagerService extends IBActivityManagerService.Stub imple
 
     @Override
     public RunningAppProcessInfo getRunningAppProcesses(String callerPackage, int userId) throws RemoteException {
-        ActivityManager manager = (ActivityManager) EliteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager manager = (ActivityManager) ParallaxELiteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
         List<ActivityManager.RunningAppProcessInfo> runningAppProcesses = manager.getRunningAppProcesses();
         Map<Integer, ActivityManager.RunningAppProcessInfo> runningProcessMap = new HashMap<>();
         for (ActivityManager.RunningAppProcessInfo runningProcess : runningAppProcesses) {
