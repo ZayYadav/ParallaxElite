@@ -21,6 +21,7 @@ import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.compat.oauth.TwitterNativeAuthBridgeActivity;
 import com.parallaxelite.compat.oauth.TwitterOAuthSessionStore;
+import com.parallaxelite.compat.oauth.TwitterOAuthUrl;
 import com.parallaxelite.compat.oauth.VirtualOAuthBridgeActivity;
 import com.parallaxelite.compat.oauth.VirtualOAuthRouter;
 import com.parallaxelite.utils.compat.IntentRedirectCompat;
@@ -365,6 +366,28 @@ public final class ExternalAuthRouter {
         if (source == null) return null;
         try {
             PackageManager packageManager = ParallaxELiteInstaller.getContext().getPackageManager();
+            Uri authUri = source.getData();
+
+            // Modern X OAuth2 can be routed by the official exported URL interpreter
+            // even on builds where package-scoped ACTION_VIEW resolution is flaky.
+            if (authUri != null && TwitterOAuthUrl.isModernOAuth2Authorize(authUri.toString())) {
+                ComponentName exact = new ComponentName(
+                        "com.twitter.android",
+                        "com.x.android.deeplink.XUrlInterpreterActivity");
+                try {
+                    android.content.pm.ActivityInfo info =
+                            packageManager.getActivityInfo(exact, 0);
+                    if (info != null
+                            && info.enabled
+                            && info.exported
+                            && info.applicationInfo != null
+                            && info.applicationInfo.enabled) {
+                        return "com.twitter.android";
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+
             for (String packageName : TWITTER_NATIVE_PROVIDER_PACKAGES) {
                 Intent candidate = new Intent(source);
                 candidate.setComponent(null);
