@@ -81,6 +81,32 @@ jobs:
           fi
 
           unzip -t "${AAR}"
+
+          VERIFY_DIR="${RUNNER_TEMP}/parallaxelite-aar"
+          rm -rf "${VERIFY_DIR}"
+          mkdir -p "${VERIFY_DIR}"
+          unzip -q "${AAR}" -d "${VERIFY_DIR}"
+
+          test -f "${VERIFY_DIR}/classes.jar"
+          test -f "${VERIFY_DIR}/AndroidManifest.xml"
+          test -f "${VERIFY_DIR}/jni/arm64-v8a/libEliteCore.so"
+          test -f "${VERIFY_DIR}/jni/armeabi-v7a/libEliteCore.so"
+
+          echo "Verifying arm64-v8a ELF LOAD alignment (Android 15/16 16-KB pages)"
+          readelf -lW "${VERIFY_DIR}/jni/arm64-v8a/libEliteCore.so" | tee "${VERIFY_DIR}/arm64-readelf.txt"
+          awk '
+            $1 == "LOAD" {
+              align = $NF
+              sub(/^0x/, "", align)
+              value = strtonum("0x" align)
+              if (value < 16384) bad = 1
+              seen = 1
+            }
+            END {
+              if (!seen || bad) exit 1
+            }
+          ' "${VERIFY_DIR}/arm64-readelf.txt"
+
           mkdir -p release-artifact
           cp "${AAR}" release-artifact/ParallaxElite-release.aar
           sha256sum release-artifact/ParallaxElite-release.aar | tee release-artifact/SHA256SUMS.txt
@@ -90,6 +116,8 @@ jobs:
             echo "api_version=3"
             echo "android_api=${ANDROID_API}"
             echo "ndk=${NDK_VERSION}"
+            echo "abis=arm64-v8a,armeabi-v7a"
+            echo "arm64_flexible_page_size_verified=true"
           } > release-artifact/BUILD_INFO.txt
 
       - name: Upload ParallaxElite SDK
