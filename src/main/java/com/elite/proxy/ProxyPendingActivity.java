@@ -29,8 +29,12 @@ public class ProxyPendingActivity extends Activity {
         Slog.d(TAG, "ProxyPendingActivity: " + pendingActivityRecord);
         if (pendingActivityRecord.mTarget == null)
             return;
-        pendingActivityRecord.mTarget.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        pendingActivityRecord.mTarget.setExtrasClassLoader(BActivityThread.getApplication().getClassLoader());
+        ClassLoader extrasLoader = BActivityThread.getApplication() != null
+                ? BActivityThread.getApplication().getClassLoader()
+                : getClassLoader();
+        pendingActivityRecord.mTarget.setExtrasClassLoader(extrasLoader);
+        // Preserve the creator's original flags/task-stack semantics. This proxy
+        // is itself an Activity, so FLAG_ACTIVITY_NEW_TASK is not required.
         startActivity(pendingActivityRecord.mTarget);
     }
 
