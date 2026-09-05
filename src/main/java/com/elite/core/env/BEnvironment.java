@@ -8,6 +8,7 @@ import com.elite.utils.compat.BuildCompat;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 
 import com.elite.EliteInstaller;
@@ -36,29 +37,34 @@ public class BEnvironment {
 		return sVBoxRoot;
 	}
     
-    public static ArrayList<String> getAllDex(String str) {
-		File appDir = getAppDir(str);
-		ArrayList<String> arrayList = new ArrayList<>();
-		File[] listFiles = appDir.listFiles((FilenameFilter) new FilenameFilter() {
-	        @Override
-		    public boolean accept(File dir, String name) {
-			   return str.endsWith(".apk");
-		    }
-	    });
-		if (listFiles != null) {
-			for (File file : listFiles) {
-				if (BuildCompat.isUpsideDownCake()) {
-					try {
-						file.setReadOnly();
-					} catch (Throwable th) {
-						th.printStackTrace();
-					}
-				}
-				arrayList.add(file.getAbsolutePath());
-			}
-		}
-		return arrayList;
-	}
+    public static ArrayList<String> getAllDex(String packageName) {
+        File appDir = getAppDir(packageName);
+        ArrayList<String> result = new ArrayList<>();
+        File[] apkFiles = appDir.listFiles((dir, name) ->
+                name != null && name.toLowerCase(Locale.US).endsWith(".apk"));
+        if (apkFiles == null || apkFiles.length == 0) {
+            return result;
+        }
+
+        // Android's class path expects base.apk before feature/config splits.
+        Arrays.sort(apkFiles, (left, right) -> {
+            boolean leftBase = "base.apk".equals(left.getName());
+            boolean rightBase = "base.apk".equals(right.getName());
+            if (leftBase != rightBase) return leftBase ? -1 : 1;
+            return left.getName().compareTo(right.getName());
+        });
+
+        for (File file : apkFiles) {
+            if (BuildCompat.isUpsideDownCake()) {
+                try {
+                    file.setReadOnly();
+                } catch (Throwable ignored) {
+                }
+            }
+            result.add(file.getAbsolutePath());
+        }
+        return result;
+    }
 
     public static File getSystemDir() {
         return new File(sVBoxRoot, "system");
