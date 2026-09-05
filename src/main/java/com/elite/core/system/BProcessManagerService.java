@@ -83,9 +83,14 @@ public class BProcessManagerService implements ISystemService {
                     if (app.initLock != null) {
                         app.initLock.block();
                     }
-                    if (app.bActivityThread != null) {
+                    if (app.bActivityThread != null
+                            && app.bActivityThread.asBinder() != null
+                            && app.bActivityThread.asBinder().isBinderAlive()) {
                         return app;
                     }
+                    bProcess.remove(processName);
+                    mPidsSelfLocked.remove(app);
+                    app.kill();
                 }
                 bpid = getUsingBPidL();
                 Slog.d(TAG, "init bUid = " + buid + ", bPid = " + bpid);
@@ -156,8 +161,12 @@ public class BProcessManagerService implements ISystemService {
 
     private int getUsingBPidL() {
         ActivityManager manager = (ActivityManager) EliteInstaller.getContext().getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> runningAppProcesses = manager.getRunningAppProcesses();
+        List<ActivityManager.RunningAppProcessInfo> runningAppProcesses =
+                manager == null ? null : manager.getRunningAppProcesses();
         Set<Integer> usingPs = new HashSet<>();
+        if (runningAppProcesses == null) {
+            runningAppProcesses = new ArrayList<>();
+        }
         for (ActivityManager.RunningAppProcessInfo runningAppProcess : runningAppProcesses) {
             int i = parseBPid(runningAppProcess.processName);
             usingPs.add(i);
@@ -224,23 +233,31 @@ public class BProcessManagerService implements ISystemService {
 		if (appThread == null || !appThread.isBinderAlive()) {
 			return false;
 		}
-		attachClientL(record, appThread);
+		if (!attachClientL(record, appThread)) {
+            return false;
+        }
 		createProc(record);
 		return true;
 	}
 
-    private void attachClientL(final ProcessRecord app, final IBinder appThread) {
+    private boolean attachClientL(final ProcessRecord app, final IBinder appThread) {
         IBActivityThread activityThread = IBActivityThread.Stub.asInterface(appThread);
-        if (activityThread == null) {
+        if (activityThread == null || appThread == null || !appThread.isBinderAlive()) {
             app.kill();
-            return;
+            if (app.initLock != null) {
+                app.initLock.open();
+            }
+            return false;
         }
         try {
             appThread.linkToDeath(new IBinder.DeathRecipient() {
                 @Override
                 public void binderDied() {
                     Log.d(TAG, "App Died: " + app.processName);
-                    appThread.unlinkToDeath(this, 0);
+                    try {
+                        appThread.unlinkToDeath(this, 0);
+                    } catch (Throwable ignored) {
+                    }
                     onProcessDie(app);
                 }
             }, 0);
@@ -254,6 +271,7 @@ public class BProcessManagerService implements ISystemService {
             e.printStackTrace();
         }
         app.initLock.open();
+        return app.bActivityThread != null;
     }
 
     public void onProcessDie(ProcessRecord record) {
@@ -360,15 +378,18 @@ public class BProcessManagerService implements ISystemService {
 
     private static String getProcessName(Context context, int pid) {
         String processName = null;
-        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningAppProcessInfo info : am.getRunningAppProcesses()) {
+        ActivityManager am = context == null ? null
+                : (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> processes =
+                am == null ? null : am.getRunningAppProcesses();
+        if (processes == null) {
+            return null;
+        }
+        for (ActivityManager.RunningAppProcessInfo info : processes) {
             if (info.pid == pid) {
                 processName = info.processName;
                 break;
             }
-        }
-        if (processName == null) {
-            throw new RuntimeException("processName = null");
         }
         return processName;
     }
