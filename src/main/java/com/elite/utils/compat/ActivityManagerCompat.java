@@ -31,6 +31,7 @@ public class ActivityManagerCompat {
 	public static final int INTENT_SENDER_ACTIVITY_RESULT = 3;
 	Type for IActivityManaqer.getIntentSender: this PendingIntent is*/
 	public static final int INTENT_SENDER_SERVICE = 4;
+	public static final int INTENT_SENDER_FOREGROUND_SERVICE = 5;
 	/** User operation call: success! */
 	public static final int USER_OP_SUCCESS = 0;
 	public static final int START_FLAG_DEBUG = 1<<1;
