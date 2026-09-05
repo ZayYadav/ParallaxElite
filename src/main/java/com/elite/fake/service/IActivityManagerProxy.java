@@ -48,6 +48,7 @@ import com.elite.fake.frameworks.BPackageManager;
 import com.elite.fake.hook.ClassInvocationStub;
 import com.elite.fake.hook.MethodHook;
 import com.elite.fake.hook.ProxyMethod;
+import com.elite.fake.hook.ProxyMethods;
 import com.elite.fake.hook.ScanClass;
 import com.elite.fake.service.base.PkgMethodProxy;
 import com.elite.fake.service.context.providers.ContentProviderStub;
@@ -65,6 +66,7 @@ import com.elite.utils.compat.ActivityManagerCompat;
 import com.elite.utils.compat.BuildCompat;
 import com.elite.utils.compat.ParceledListSliceCompat;
 import com.elite.utils.compat.TaskDescriptionCompat;
+import com.elite.utils.compat.VirtualPermissionCompat;
 
 import static android.content.Context.RECEIVER_EXPORTED;
 import static android.content.Context.RECEIVER_NOT_EXPORTED;
@@ -623,16 +625,33 @@ public class IActivityManagerProxy extends ClassInvocationStub {
         }
     }
 
-    @ProxyMethod("checkPermission")
+    @ProxyMethods({"checkPermission", "checkPermissionForDevice"})
     public static class checkPermission extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            MethodParameterUtils.replaceLastUid(args);
-            String permission = (String) args[0];
-            if (permission.equals(Manifest.permission.ACCOUNT_MANAGER) || permission.equals(Manifest.permission.SEND_SMS)) {
+            String permission = args != null && args.length > 0 && args[0] instanceof String
+                    ? (String) args[0] : null;
+            if (VirtualPermissionCompat.shouldGrantDeclaredNetworkPermission(permission)) {
+                return PackageManager.PERMISSION_GRANTED;
+            }
+            replacePermissionCheckUid(args);
+            if (Manifest.permission.ACCOUNT_MANAGER.equals(permission)
+                    || Manifest.permission.SEND_SMS.equals(permission)) {
                 return PackageManager.PERMISSION_GRANTED;
             }
             return method.invoke(who, args);
+        }
+
+        private static void replacePermissionCheckUid(Object[] args) {
+            // Android 16 checkPermissionForDevice has uid at index 2; the final int
+            // is deviceId and must not be rewritten as a uid.
+            if (args == null || args.length <= 2 || !(args[2] instanceof Integer)) {
+                return;
+            }
+            int uid = (Integer) args[2];
+            if (uid == BActivityThread.getBUid()) {
+                args[2] = EliteInstaller.getHostUid();
+            }
         }
     }
 
