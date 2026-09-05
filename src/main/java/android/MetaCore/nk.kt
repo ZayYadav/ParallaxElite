@@ -3,8 +3,8 @@ package android.MetaCore
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import com.elite.EliteInstaller
-import com.elite.BuildConfig
+import com.parallaxelite.ParallaxELiteInstaller
+import com.parallaxelite.BuildConfig
 import java.text.SimpleDateFormat
 import java.util.*
 import android.widget.Toast
@@ -30,7 +30,7 @@ class nk {
 
         @JvmStatic
         fun getActivatedSdk(): Boolean {
-            val context = EliteInstaller.getContext() ?: return false
+            val context = ParallaxELiteInstaller.getContext() ?: return false
             val sp = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             if (!GAH() || !sp.getBoolean("activated", false)) {
                 Msg = "SDK not activated"
@@ -88,7 +88,7 @@ class nk {
             is_False = false
             lastIdentityCheckElapsed = 0L
             try {
-                EliteInstaller.getContext()?.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                ParallaxELiteInstaller.getContext()?.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
                     ?.edit()
                     ?.putBoolean("activated", false)
                     ?.remove("lease_expires_at")
@@ -114,7 +114,7 @@ class nk {
         @JvmStatic
         fun ismsg(msg: String?) {
             if (msg == null) return
-            val ctx = EliteInstaller.getContext() ?: return
+            val ctx = ParallaxELiteInstaller.getContext() ?: return
             Handler(Looper.getMainLooper()).post {
                 try {
                     Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
@@ -129,7 +129,7 @@ class nk {
             try {
                 val value = status.equals("online", ignoreCase = true)
                 is_False = value
-                val ctx = EliteInstaller.getContext()
+                val ctx = ParallaxELiteInstaller.getContext()
                 if (ctx != null) {
                     val sp = ctx.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
                     sp.edit().apply {
@@ -191,7 +191,7 @@ class nk {
 
         @JvmStatic
         fun checkExpiryManually(): String {
-            val context = EliteInstaller.getContext() ?: return "No context"
+            val context = ParallaxELiteInstaller.getContext() ?: return "No context"
             val sp = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             val expiryStr = sp.getString("expiry", null)
             if (expiryStr == null) return "No expiry date"

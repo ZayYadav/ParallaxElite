@@ -46,7 +46,7 @@ lsparanoid {
 }
 
 android {
-    namespace "com.elite"
+    namespace "com.parallaxelite"
     compileSdk rootProject.ext.compileSdk
     buildToolsVersion rootProject.ext.buildToolsVersion
     ndkVersion rootProject.ext.ndkVersion

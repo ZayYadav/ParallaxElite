@@ -1,5 +1,5 @@
--keep class com.elite.** {*; }
--keep class com.elite.jnihook.** {*; }
+-keep class com.parallaxelite.** {*; }
+-keep class com.parallaxelite.jnihook.** {*; }
 -keep class black.** {*; }
 -keep class android.** {*; }
 -keep class com.android.** {*; }

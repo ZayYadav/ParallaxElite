@@ -10,8 +10,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import org.json.JSONObject
 import org.lsposed.lsparanoid.Obfuscate
-import com.elite.EliteInstaller
-import com.elite.core.env.BEnvironment
+import com.parallaxelite.ParallaxELiteInstaller
+import com.parallaxelite.core.env.BEnvironment
 import java.io.File
 import java.net.URL
 import java.util.Locale
@@ -71,8 +71,8 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
         }
 
         exe.execute {
-            val context = EliteInstaller.getContext()
-            val packageName = EliteInstaller.getHostPkg().orEmpty()
+            val context = ParallaxELiteInstaller.getContext()
+            val packageName = ParallaxELiteInstaller.getHostPkg().orEmpty()
             if (packageName.isEmpty()) {
                 nk.clearActivation("Host package is unavailable")
                 return@execute
@@ -221,7 +221,7 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
 
     private fun deviceId(): String {
         return try {
-            val ctx = EliteInstaller.getContext()
+            val ctx = ParallaxELiteInstaller.getContext()
             android.provider.Settings.Secure.getString(
                 ctx.contentResolver,
                 android.provider.Settings.Secure.ANDROID_ID,
@@ -253,7 +253,7 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
 
     private fun showNotificationSafe(title: String, message: String) {
         try {
-            showNotification(EliteInstaller.getContext(), title, message)
+            showNotification(ParallaxELiteInstaller.getContext(), title, message)
         } catch (_: Throwable) {
         }
     }
@@ -281,7 +281,7 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
     }
 
     private fun showServerNotification(title: String, msg: String, type: String) {
-        val ctx = EliteInstaller.getContext()
+        val ctx = ParallaxELiteInstaller.getContext()
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "meta_server"
         if (Build.VERSION.SDK_INT >= 26) {
@@ -315,7 +315,7 @@ class RemoteManager private constructor() : IRemoteManager.Stub() {
                 if (img.isEmpty()) return@execute
                 val url = if (base.isNotEmpty()) "$base/$img" else img
                 val bitmap = BitmapFactory.decodeStream(URL(url).openStream())
-                val ctx = EliteInstaller.getContext()
+                val ctx = ParallaxELiteInstaller.getContext()
                 val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val channelId = "meta_img"
                 if (Build.VERSION.SDK_INT >= 26) {

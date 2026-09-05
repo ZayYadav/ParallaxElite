@@ -8,8 +8,8 @@
 # -overloadaggressively
 # -allowaccessmodification
 
-# 2. Inline EliteInstaller ke small methods
--assumenosideeffects class com.elite.EliteInstaller {
+# 2. Inline ParallaxELiteInstaller ke small methods
+-assumenosideeffects class com.parallaxelite.ParallaxELiteInstaller {
     private void initNotificationManager();
     private static java.lang.String getProcessName(android.content.Context);
     public static boolean is64Bit();
@@ -31,7 +31,7 @@
     public static int i(...);
 }
 
--assumenosideeffects class com.elite.utils.Slog {
+-assumenosideeffects class com.parallaxelite.utils.Slog {
     public static void d(...);
     public static void i(...);
     public static void v(...);
@@ -50,19 +50,19 @@
 ############################################
 
 # JniHook class ke sabhi fields preserve karo
--keep class com.elite.jnihook.jni.JniHook {
+-keep class com.parallaxelite.jnihook.jni.JniHook {
     *;
 }
 
 # Native offset field specifically preserve karo
--keepclassmembers class com.elite.jnihook.jni.JniHook {
+-keepclassmembers class com.parallaxelite.jnihook.jni.JniHook {
     public static int NATIVE_OFFSET;
     public static int NATIVE_HANDLE;
     public static int NATIVE_PTR;
 }
 
 # VNative class preserve karo
--keep class com.elite.core.VNative {
+-keep class com.parallaxelite.core.VNative {
     *;
 }
 
@@ -77,25 +77,25 @@
 -keepattributes Signature, *Annotation*, Exceptions, InnerClasses
 
 ############################################
-# ========== ELITE INSTALLER CORE ==========
+# ========== PARALLAXELITE INSTALLER CORE ==========
 ############################################
 
-# Main EliteInstaller class - NO OBFUSCATION
--keep class com.elite.EliteInstaller {
+# Main ParallaxELiteInstaller class - NO OBFUSCATION
+-keep class com.parallaxelite.ParallaxELiteInstaller {
     *;
 }
 
 # Keep ALL methods with original signatures
--keepclassmembers class com.elite.EliteInstaller {
+-keepclassmembers class com.parallaxelite.ParallaxELiteInstaller {
     public <init>(...);
-    public static com.elite.EliteInstaller get();
+    public static com.parallaxelite.ParallaxELiteInstaller get();
     public android.os.Handler getHandler();
     public static android.content.pm.PackageManager getPackageManager();
     public static java.lang.String getHostPkg();
     public static int getHostUid();
     public static int getHostUserId();
     public static android.content.Context getContext();
-    public com.elite.entity.AppConfig getAppConfig();
+    public com.parallaxelite.entity.AppConfig getAppConfig();
     public java.lang.Thread$UncaughtExceptionHandler getExceptionHandler();
     public void setExceptionHandler(java.lang.Thread$UncaughtExceptionHandler);
     
@@ -105,7 +105,7 @@
     public static void setEnableDaemonService(boolean);
     
     # Context methods
-    public void doAttachBaseContext(android.content.Context, com.elite.app.configuration.ClientConfiguration);
+    public void doAttachBaseContext(android.content.Context, com.parallaxelite.app.configuration.ClientConfiguration);
     public void doCreate();
     
     # Thread methods
@@ -116,24 +116,24 @@
     public void onBeforeMainLaunchApk(java.lang.String, int);
     
     # Manager getters
-    public static com.elite.fake.frameworks.BJobManager getBJobManager();
-    public static com.elite.fake.frameworks.BPackageManager getBPackageManager();
-    public static com.elite.fake.frameworks.BActivityManager getBActivityManager();
-    public static com.elite.fake.frameworks.BStorageManager getBStorageManager();
+    public static com.parallaxelite.fake.frameworks.BJobManager getBJobManager();
+    public static com.parallaxelite.fake.frameworks.BPackageManager getBPackageManager();
+    public static com.parallaxelite.fake.frameworks.BActivityManager getBActivityManager();
+    public static com.parallaxelite.fake.frameworks.BStorageManager getBStorageManager();
     
     # Package installation methods
     public boolean launchApk(java.lang.String, int);
     public boolean isInstalled(java.lang.String, int);
     public void uninstallPackageAsUser(java.lang.String, int);
     public void uninstallPackage(java.lang.String);
-    public com.elite.entity.pm.InstallResult installPackageAsUser(java.lang.String, int);
-    public com.elite.entity.pm.InstallResult installPackageAsUser(java.io.File, int);
-    public com.elite.entity.pm.InstallResult installPackageAsUser(android.net.Uri, int);
+    public com.parallaxelite.entity.pm.InstallResult installPackageAsUser(java.lang.String, int);
+    public com.parallaxelite.entity.pm.InstallResult installPackageAsUser(java.io.File, int);
+    public com.parallaxelite.entity.pm.InstallResult installPackageAsUser(android.net.Uri, int);
     
     # Xposed methods
-    public com.elite.entity.pm.InstallResult installXPModule(java.io.File);
-    public com.elite.entity.pm.InstallResult installXPModule(android.net.Uri);
-    public com.elite.entity.pm.InstallResult installXPModule(java.lang.String);
+    public com.parallaxelite.entity.pm.InstallResult installXPModule(java.io.File);
+    public com.parallaxelite.entity.pm.InstallResult installXPModule(android.net.Uri);
+    public com.parallaxelite.entity.pm.InstallResult installXPModule(java.lang.String);
     public void uninstallXPModule(java.lang.String);
     public boolean isXPEnable();
     public void setXPEnable(boolean);
@@ -153,18 +153,18 @@
     
     # User management
     public java.util.List getUsers();
-    public com.elite.core.system.user.BUserInfo createUser(int);
+    public com.parallaxelite.core.system.user.BUserInfo createUser(int);
     public void deleteUser(int);
     
     # Lifecycle callbacks
     public java.util.List getAppLifecycleCallbacks();
-    public void removeAppLifecycleCallback(com.elite.app.configuration.AppLifecycleCallback);
-    public void addAppLifecycleCallback(com.elite.app.configuration.AppLifecycleCallback);
+    public void removeAppLifecycleCallback(com.parallaxelite.app.configuration.AppLifecycleCallback);
+    public void addAppLifecycleCallback(com.parallaxelite.app.configuration.AppLifecycleCallback);
     
     # GMS methods
     public boolean isSupportGms();
     public boolean isInstallGms(int);
-    public com.elite.entity.pm.InstallResult installGms(int);
+    public com.parallaxelite.entity.pm.InstallResult installGms(int);
     public boolean uninstallGms(int);
     
     # Service methods
@@ -185,9 +185,9 @@
 }
 
 # Keep ALL fields (public and private)
--keepclassmembers class com.elite.EliteInstaller {
+-keepclassmembers class com.parallaxelite.ParallaxELiteInstaller {
     *** TAG;
-    *** sEliteInstaller;
+    *** sParallaxELiteInstaller;
     *** sContext;
     *** mProcessType;
     *** mServices;
@@ -201,12 +201,12 @@
 }
 
 # Keep ProcessType enum
--keep class com.elite.EliteInstaller$ProcessType {
+-keep class com.parallaxelite.ParallaxELiteInstaller$ProcessType {
     *;
 }
 
 # Keep ALL inner classes
--keep class com.elite.EliteInstaller$* {
+-keep class com.parallaxelite.ParallaxELiteInstaller$* {
     *;
 }
 
@@ -313,11 +313,11 @@
 # ========== REFINED PROXY RULES ==========
 # 2. Keep Proxy Classes (The classes themselves must exist)
 # NOTE: We do NOT use " { *; } " here, so unlisted members can be obfuscated.
--keep class com.elite.fake.service.*Proxy
--keep class com.elite.fake.service.*Proxy$*
+-keep class com.parallaxelite.fake.service.*Proxy
+-keep class com.parallaxelite.fake.service.*Proxy$*
 
 # 3. Keep Critical Methods in Main Proxy Classes (Overrides from ClassInvocationStub)
--keepclassmembers class com.elite.fake.service.*Proxy {
+-keepclassmembers class com.parallaxelite.fake.service.*Proxy {
     public <init>(...);
     protected java.lang.Object getWho();
     protected void inject(java.lang.Object, java.lang.Object);
@@ -327,14 +327,14 @@
 
 # 4. Keep Hook Methods in Inner Proxy Classes (Overrides from MethodHook)
 # This ensures 'hook', 'beforeHook', etc. are kept, but helper methods like 'getAuthIndex' are obfuscated.
--keepclassmembers class com.elite.fake.service.*Proxy$* {
+-keepclassmembers class com.parallaxelite.fake.service.*Proxy$* {
     protected java.lang.Object hook(java.lang.Object, java.lang.reflect.Method, java.lang.Object[]);
     protected java.lang.Object beforeHook(java.lang.Object, java.lang.reflect.Method, java.lang.Object[]);
     protected java.lang.Object afterHook(java.lang.Object);
     protected boolean isEnable();
 }
 
--keepclassmembers class com.elite.proxy.ProxyManifest {
+-keepclassmembers class com.parallaxelite.proxy.ProxyManifest {
     public static boolean isProxy(java.lang.String);
     public static java.lang.String getProxyAuthorities(int);
     public static java.lang.String getProxyPendingActivity(int);
@@ -353,9 +353,9 @@
 -keep class android.location.** { *; }
 -keep class android.os.** { *; }
 -keep class net_62v.external.** { *; }
--keep class com.elite.core.system.** { *; }
--keep class com.elite.fake.delegate.** { *; }
--keep class com.elite.fake.frameworks.** { *; }
+-keep class com.parallaxelite.core.system.** { *; }
+-keep class com.parallaxelite.fake.delegate.** { *; }
+-keep class com.parallaxelite.fake.frameworks.** { *; }
 -keep class com.android.** { *; }
 -keep class android.Meta.** { *; }
 
@@ -380,32 +380,32 @@
 # ========== OTHER ESSENTIAL CLASSES ==========
 ############################################
 -keep class android.MetaCore.AdvancedPopupHelper { *; }
--keep class com.elite.core.env.BEnvironment { *; }
--keep class com.elite.utils.FileUtils { *; }
--keep class com.elite.core.HostApp { *; }
--keep class com.elite.app.LauncherActivity { *; }
--keep class com.elite.app.configuration.AppLifecycleCallback { *; }
--keep class com.elite.app.configuration.ClientConfiguration { *; }
--keep class com.elite.core.system.api.MetaActivationManager { *; }
+-keep class com.parallaxelite.core.env.BEnvironment { *; }
+-keep class com.parallaxelite.utils.FileUtils { *; }
+-keep class com.parallaxelite.core.HostApp { *; }
+-keep class com.parallaxelite.app.LauncherActivity { *; }
+-keep class com.parallaxelite.app.configuration.AppLifecycleCallback { *; }
+-keep class com.parallaxelite.app.configuration.ClientConfiguration { *; }
+-keep class com.parallaxelite.core.system.api.MetaActivationManager { *; }
 
 # === FIX: KEEP ALL PROXY COMPONENTS REFERENCED IN MANIFEST ===
--keep class com.elite.proxy.** { *; }
+-keep class com.parallaxelite.proxy.** { *; }
 
 
 # === FIX: KEEP METACORE SERVICES ===
 -keep class android.MetaCore.Service.** { *; }
 
 # === FIX: KEEP INSTALL ENTITIES (Only InstallResult as requested, others obfuscated) ===
--keep class com.elite.entity.pm.InstallResult { *; }
+-keep class com.parallaxelite.entity.pm.InstallResult { *; }
 
 ############################################
 # ========== REPACKAGING RULES ==========
 ############################################
 
-# Sab classes ko top.bienvenido.date_24323 mein bhejo (EXCEPT elite classes)
+# Sab classes ko top.bienvenido.date_24323 mein bhejo (EXCEPT parallaxelite classes)
 -repackageclasses 'top.bienvenido.date_24323'
 -allowaccessmodification
-# Elite classes ko original package mein rahne do
+# ParallaxELite classes ko original package mein rahne do
 
 
 ############################################
@@ -435,11 +435,11 @@
 ############################################
 # Host-side OAuth/provider trampolines are referenced from the manifest and
 # provider/session classes exchange callbacks reflectively across process edges.
--keep class com.elite.compat.auth.** { *; }
--keep class com.elite.compat.oauth.** { *; }
--keep class com.elite.fake.service.IAuthCompatPackageManagerProxy { *; }
--keep class com.elite.fake.service.ITwitterAwareAccountManagerProxy { *; }
--keep class com.elite.utils.compat.IntentRedirectCompat { *; }
--keep class com.elite.utils.compat.VirtualPackageMetadataCompat { *; }
--keep class com.elite.utils.compat.VirtualPermissionCompat { *; }
+-keep class com.parallaxelite.compat.auth.** { *; }
+-keep class com.parallaxelite.compat.oauth.** { *; }
+-keep class com.parallaxelite.fake.service.IAuthCompatPackageManagerProxy { *; }
+-keep class com.parallaxelite.fake.service.ITwitterAwareAccountManagerProxy { *; }
+-keep class com.parallaxelite.utils.compat.IntentRedirectCompat { *; }
+-keep class com.parallaxelite.utils.compat.VirtualPackageMetadataCompat { *; }
+-keep class com.parallaxelite.utils.compat.VirtualPermissionCompat { *; }
 

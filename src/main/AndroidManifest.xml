@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.elite">
+    package="com.parallaxelite">
     
     <!-- ========== STORAGE PERMISSIONS ========== -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
@@ -304,19 +304,19 @@
              owned by Google/Meta/X; these components only preserve Activity results
              and validated OAuth callbacks for the virtual application. -->
         <activity
-            android:name="com.elite.compat.oauth.VirtualOAuthBridgeActivity"
+            android:name="com.parallaxelite.compat.oauth.VirtualOAuthBridgeActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
         <activity
-            android:name="com.elite.compat.oauth.TwitterNativeAuthBridgeActivity"
+            android:name="com.parallaxelite.compat.oauth.TwitterNativeAuthBridgeActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <activity
-            android:name="com.elite.compat.oauth.TwitterOAuthCallbackActivity"
+            android:name="com.parallaxelite.compat.oauth.TwitterOAuthCallbackActivity"
             android:excludeFromRecents="true"
             android:exported="true"
             android:launchMode="singleTop"
@@ -337,7 +337,7 @@
         </activity>
 
         <activity
-            android:name="com.elite.compat.oauth.FacebookOAuthCallbackActivity"
+            android:name="com.parallaxelite.compat.oauth.FacebookOAuthCallbackActivity"
             android:excludeFromRecents="true"
             android:exported="true"
             android:launchMode="singleTop"
@@ -354,11 +354,11 @@
         
         <activity
             android:theme="@style/BTheme"
-            android:name="com.elite.proxy.ProxyWebActivity"
+            android:name="com.parallaxelite.proxy.ProxyWebActivity"
             android:exported="false" />
         
         <provider
-            android:name="com.elite.core.system.SystemCallProvider"
+            android:name="com.parallaxelite.core.system.SystemCallProvider"
             android:authorities="${applicationId}.SystemCallProvider"
             android:exported="false"
             android:initOrder="100" />
@@ -399,13 +399,13 @@
         </service>
 
         <service
-            android:name="com.elite.core.system.DaemonService"
+            android:name="com.parallaxelite.core.system.DaemonService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:process="@string/vbox_service_name" />
 
         <service
-            android:name="com.elite.core.system.DaemonService$DaemonInnerService"
+            android:name="com.parallaxelite.core.system.DaemonService$DaemonInnerService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:process="@string/vbox_service_name" />
@@ -416,7 +416,7 @@
             android:theme="@style/LauncherTheme" />
 
         <service
-            android:name="com.elite.proxy.ProxyVpnService"
+            android:name="com.parallaxelite.proxy.ProxyVpnService"
             android:enabled="true"
             android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE"
@@ -435,7 +435,7 @@
             android:exported="true"
             android:process=":p0"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P1"
@@ -443,7 +443,7 @@
             android:exported="true"
             android:process=":p1"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P2"
@@ -451,7 +451,7 @@
             android:exported="true"
             android:process=":p2"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P3"
@@ -459,7 +459,7 @@
             android:exported="true"
             android:process=":p3"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P4"
@@ -467,7 +467,7 @@
             android:exported="true"
             android:process=":p4"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P5"
@@ -475,7 +475,7 @@
             android:exported="true"
             android:process=":p5"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P6"
@@ -483,7 +483,7 @@
             android:exported="true"
             android:process=":p6"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P7"
@@ -491,7 +491,7 @@
             android:exported="true"
             android:process=":p7"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P8"
@@ -499,7 +499,7 @@
             android:exported="true"
             android:process=":p8"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P9"
@@ -507,7 +507,7 @@
             android:exported="true"
             android:process=":p9"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P10"
@@ -515,7 +515,7 @@
             android:exported="true"
             android:process=":p10"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P11"
@@ -523,7 +523,7 @@
             android:exported="true"
             android:process=":p11"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P12"
@@ -531,7 +531,7 @@
             android:exported="true"
             android:process=":p12"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P13"
@@ -539,7 +539,7 @@
             android:exported="true"
             android:process=":p13"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P14"
@@ -547,7 +547,7 @@
             android:exported="true"
             android:process=":p14"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P15"
@@ -555,7 +555,7 @@
             android:exported="true"
             android:process=":p15"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P16"
@@ -563,7 +563,7 @@
             android:exported="true"
             android:process=":p16"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P17"
@@ -571,7 +571,7 @@
             android:exported="true"
             android:process=":p17"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P18"
@@ -579,7 +579,7 @@
             android:exported="true"
             android:process=":p18"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P19"
@@ -587,7 +587,7 @@
             android:exported="true"
             android:process=":p19"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P20"
@@ -595,7 +595,7 @@
             android:exported="true"
             android:process=":p20"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P21"
@@ -603,7 +603,7 @@
             android:exported="true"
             android:process=":p21"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P22"
@@ -611,7 +611,7 @@
             android:exported="true"
             android:process=":p22"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P23"
@@ -619,7 +619,7 @@
             android:exported="true"
             android:process=":p23"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
         <activity
             android:name=".proxy.ProxyActivity$P24"
@@ -627,7 +627,7 @@
             android:exported="true"
             android:process=":p24"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@style/BTheme" />
 
         <activity
@@ -636,7 +636,7 @@
             android:exported="true"
             android:process=":p0"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P1"
@@ -644,7 +644,7 @@
             android:exported="true"
             android:process=":p1"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P2"
@@ -652,7 +652,7 @@
             android:exported="true"
             android:process=":p2"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P3"
@@ -660,7 +660,7 @@
             android:exported="true"
             android:process=":p3"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P4"
@@ -668,7 +668,7 @@
             android:exported="true"
             android:process=":p4"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P5"
@@ -676,7 +676,7 @@
             android:exported="true"
             android:process=":p5"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P6"
@@ -684,7 +684,7 @@
             android:exported="true"
             android:process=":p6"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P7"
@@ -692,7 +692,7 @@
             android:exported="true"
             android:process=":p7"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P8"
@@ -700,7 +700,7 @@
             android:exported="true"
             android:process=":p8"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P9"
@@ -708,7 +708,7 @@
             android:exported="true"
             android:process=":p9"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P10"
@@ -716,7 +716,7 @@
             android:exported="true"
             android:process=":p10"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P11"
@@ -724,7 +724,7 @@
             android:exported="true"
             android:process=":p11"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P12"
@@ -732,7 +732,7 @@
             android:exported="true"
             android:process=":p12"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P13"
@@ -740,7 +740,7 @@
             android:exported="true"
             android:process=":p13"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P14"
@@ -748,7 +748,7 @@
             android:exported="true"
             android:process=":p14"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P15"
@@ -756,7 +756,7 @@
             android:exported="true"
             android:process=":p15"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P16"
@@ -764,7 +764,7 @@
             android:exported="true"
             android:process=":p16"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P17"
@@ -772,7 +772,7 @@
             android:exported="true"
             android:process=":p17"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P18"
@@ -780,7 +780,7 @@
             android:exported="true"
             android:process=":p18"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P19"
@@ -788,7 +788,7 @@
             android:exported="true"
             android:process=":p19"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P20"
@@ -796,7 +796,7 @@
             android:exported="true"
             android:process=":p20"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P21"
@@ -804,7 +804,7 @@
             android:exported="true"
             android:process=":p21"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P22"
@@ -812,7 +812,7 @@
             android:exported="true"
             android:process=":p22"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P23"
@@ -820,7 +820,7 @@
             android:exported="true"
             android:process=":p23"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
         <activity
             android:name=".proxy.TransparentProxyActivity$P24"
@@ -828,7 +828,7 @@
             android:exported="true"
             android:process=":p24"
             android:supportsPictureInPicture="true"
-            android:taskAffinity="com.elite.task_affinity"
+            android:taskAffinity="com.parallaxelite.task_affinity"
             android:theme="@android:style/Theme.Translucent" />
 
         <activity

@@ -1,6 +1,6 @@
-# ParallaxElite Modern Compatibility Architecture
+# ParallaxELite Modern Compatibility Architecture
 
-This document records the compatibility design used by ParallaxElite after reviewing
+This document records the compatibility design used by ParallaxELite after reviewing
 BlackBox/VirtualApp-style containers, DroidPlugin, Tencent Shadow, SandHook, Dobby,
 LSPosed, EdXposed and Dreamland designs.
 
@@ -10,7 +10,7 @@ LSPosed, EdXposed and Dreamland designs.
 2. Preserve guest identity inside the virtual namespace; normalize identity only at real
    Android/provider boundaries where Binder validates the host UID.
 3. Preserve provider-owned authentication results rather than fabricating accounts/tokens.
-4. Keep one native inline-hook backend. ParallaxElite uses Dobby for ARM32/ARM64.
+4. Keep one native inline-hook backend. ParallaxELite uses Dobby for ARM32/ARM64.
 5. Keep guest ClassLoader isolation. Never search arbitrary host/system loaders as a generic
    ClassNotFoundException recovery path.
 6. Treat split APKs as first-class code/resource/native-library inputs.
@@ -36,7 +36,7 @@ LSPosed, EdXposed and Dreamland designs.
 
 ### Dobby
 - Single native inline-hook backend for supported ARM ABIs.
-- Native backend remains isolated behind the existing ParallaxElite Hook layer.
+- Native backend remains isolated behind the existing ParallaxELite Hook layer.
 
 ### SandHook / LSPosed / EdXposed / Dreamland
 - ClassLoader-aware callback execution.

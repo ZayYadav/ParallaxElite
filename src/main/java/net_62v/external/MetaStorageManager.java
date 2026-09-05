@@ -2,7 +2,7 @@ package net_62v.external;
 
 import android.os.Environment;
 import java.io.File;
-import com.elite.utils.FileUtils;
+import com.parallaxelite.utils.FileUtils;
 import org.lsposed.lsparanoid.Obfuscate;
 
 @Obfuscate

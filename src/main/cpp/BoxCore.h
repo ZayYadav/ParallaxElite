@@ -9,7 +9,7 @@
 #include <unistd.h>
 //#include <fb/include/fb/ALog.h>
 //#include <fb/include/fb/fbjni.h>
-#define VMCORE_CLASS "com/elite/core/VNative"
+#define VMCORE_CLASS "com/parallaxelite/core/VNative"
 
 class BoxCore {
 public:
