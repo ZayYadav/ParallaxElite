@@ -1,0 +1,192 @@
+name: Full ParallaxELite Rebrand
+
+on:
+  push:
+    branches:
+      - parallaxelite-rebrand-staging
+    paths:
+      - '.github/workflows/full-parallaxelite-rebrand.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rebrand-and-build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      ANDROID_API: '36'
+      BUILD_TOOLS: '36.0.0'
+      NDK_VERSION: '27.2.12479018'
+      GRADLE_VERSION: '8.13'
+
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: parallaxelite-rebrand-staging
+          fetch-depth: 0
+
+      - name: Rewrite complete tracked source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import os
+          import subprocess
+
+          TEMP_WORKFLOW = ".github/workflows/full-parallaxelite-rebrand.yml"
+
+          TEXT_EXTENSIONS = {
+              ".java", ".kt", ".aidl", ".gradle", ".properties", ".xml",
+              ".yml", ".yaml", ".md", ".txt", ".cpp", ".cc", ".c",
+              ".h", ".hpp", ".mk", ".cmake", ".json", ".pro", ".sh",
+              ".bat", ".py", ".cfg", ".ini"
+          }
+          TEXT_NAMES = {
+              "Android.mk", "Application.mk", "CMakeLists.txt",
+              "build.gradle", "settings.gradle", "gradle.properties",
+              "proguard-rules.pro", "proguard.txt"
+          }
+
+          def brand(value: str) -> str:
+              # Protect already-correct/full brand spellings from nested replacement.
+              value = value.replace("PARALLAX ELITE", "__PXS_UP__")
+              value = value.replace("Parallax Elite", "__PXS__")
+              value = value.replace("PARALLAXELITE", "__PX_UP__")
+              value = value.replace("ParallaxElite", "__PX__")
+              value = value.replace("parallaxelite", "__px__")
+
+              value = value.replace("Elite", "ParallaxELite")
+              value = value.replace("ELITE", "PARALLAXELITE")
+              value = value.replace("elite", "parallaxelite")
+
+              value = value.replace("__PXS_UP__", "PARALLAXELITE")
+              value = value.replace("__PXS__", "ParallaxELite")
+              value = value.replace("__PX_UP__", "PARALLAXELITE")
+              value = value.replace("__PX__", "ParallaxELite")
+              value = value.replace("__px__", "parallaxelite")
+              return value
+
+          raw = subprocess.check_output(["git", "ls-files", "-z"])
+          files = [x.decode("utf-8") for x in raw.split(b"\0") if x]
+
+          changed_content = 0
+          for path_str in files:
+              if path_str == TEMP_WORKFLOW:
+                  continue
+              path = Path(path_str)
+              if path.suffix.lower() not in TEXT_EXTENSIONS and path.name not in TEXT_NAMES:
+                  continue
+              try:
+                  original = path.read_text(encoding="utf-8")
+              except (UnicodeDecodeError, OSError):
+                  continue
+              rewritten = brand(original)
+              if rewritten != original:
+                  path.write_text(rewritten, encoding="utf-8", newline="")
+                  changed_content += 1
+
+          # Rename tracked paths after content rewriting. Longest paths first keeps
+          # nested directory moves deterministic and works with partially-renamed trees.
+          moved = 0
+          files = [
+              x.decode("utf-8")
+              for x in subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0")
+              if x
+          ]
+          for old in sorted(files, key=len, reverse=True):
+              if old == TEMP_WORKFLOW:
+                  continue
+              new = brand(old)
+              if new == old:
+                  continue
+              Path(new).parent.mkdir(parents=True, exist_ok=True)
+              if Path(new).exists():
+                  raise SystemExit(f"Refusing rebrand path collision: {old} -> {new}")
+              subprocess.run(["git", "mv", "--", old, new], check=True)
+              moved += 1
+
+          print(f"Rewritten text files: {changed_content}")
+          print(f"Renamed tracked paths: {moved}")
+          PY
+
+      - name: Verify old Elite identifiers are gone
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-files | grep -E '(^|/)com/elite/' ; then
+            echo "Old com/elite package paths remain." >&2
+            exit 1
+          fi
+
+          OLD_PATTERN='com\.elite|Java_com_elite|EliteInstaller|EliteCore|libEliteCore|ParallaxElite'
+          if git grep -n -E "${OLD_PATTERN}" --               ':!*.png' ':!*.jpg' ':!*.jpeg' ':!*.webp' ':!*.so'               ':!.github/workflows/full-parallaxelite-rebrand.yml' ; then
+            echo "Old Elite branding remains in tracked text." >&2
+            exit 1
+          fi
+
+          test -f src/main/java/com/parallaxelite/ParallaxELiteInstaller.java
+          grep -q 'package com.parallaxelite'             src/main/java/com/parallaxelite/ParallaxELiteInstaller.java
+          grep -q 'class ParallaxELiteInstaller'             src/main/java/com/parallaxelite/ParallaxELiteInstaller.java
+
+          grep -q "namespace 'com.parallaxelite'" build.gradle
+          grep -q 'ParallaxELiteCore' src/main/cpp/Android.mk
+          grep -q 'ParallaxELite' settings.gradle
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Install Android platform, build tools and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install             "platforms;android-${ANDROID_API}"             "build-tools;${BUILD_TOOLS}"             "ndk;${NDK_VERSION}"
+          printf 'sdk.dir=%s\n' "${ANDROID_HOME}" > local.properties
+
+      - name: Build rebranded release AAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle clean assembleRelease --no-daemon --stacktrace
+
+          AAR="$(find build/outputs/aar -maxdepth 1 -type f -name '*-release.aar' -print -quit)"
+          test -n "${AAR}"
+
+          VERIFY_DIR="${RUNNER_TEMP}/parallaxelite-rebrand-aar"
+          rm -rf "${VERIFY_DIR}"
+          mkdir -p "${VERIFY_DIR}"
+          unzip -q "${AAR}" -d "${VERIFY_DIR}"
+
+          test -f "${VERIFY_DIR}/jni/arm64-v8a/libParallaxELiteCore.so"
+          test -f "${VERIFY_DIR}/jni/armeabi-v7a/libParallaxELiteCore.so"
+
+      - name: Commit verified full rebrand
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f local.properties
+          git rm -f .github/workflows/full-parallaxelite-rebrand.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git status --short
+          git commit -m "Fully rebrand SDK to ParallaxELite"
+          git push origin HEAD:parallaxelite-rebrand-staging
