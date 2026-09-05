@@ -36,10 +36,17 @@ public class PermissionUtils {
         // LOCATION
         add(Manifest.permission.ACCESS_FINE_LOCATION);
         add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        if (Build.VERSION.SDK_INT >= 29) {
+            add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+        }
 
         // PHONE
         add(Manifest.permission.READ_PHONE_STATE);
         add(Manifest.permission.CALL_PHONE);
+        if (Build.VERSION.SDK_INT >= 26) {
+            add(Manifest.permission.READ_PHONE_NUMBERS);
+            add(Manifest.permission.ANSWER_PHONE_CALLS);
+        }
         if (Build.VERSION.SDK_INT >= 16) {
             add(Manifest.permission.READ_CALL_LOG);
             add(Manifest.permission.WRITE_CALL_LOG);
@@ -81,14 +88,42 @@ public class PermissionUtils {
             add(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED);
         }
 
+        // Nearby devices / notifications
+        if (Build.VERSION.SDK_INT >= 31) {
+            add(Manifest.permission.BLUETOOTH_SCAN);
+            add(Manifest.permission.BLUETOOTH_CONNECT);
+            add(Manifest.permission.BLUETOOTH_ADVERTISE);
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            add(Manifest.permission.NEARBY_WIFI_DEVICES);
+            add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+
         // SENSORS
         if (Build.VERSION.SDK_INT >= 20) {
             add(Manifest.permission.BODY_SENSORS);
         }
+        if (Build.VERSION.SDK_INT >= 29) {
+            add(Manifest.permission.ACTIVITY_RECOGNITION);
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            add(Manifest.permission.BODY_SENSORS_BACKGROUND);
+        }
     }};
 
     public static boolean isCheckPermissionRequired(ApplicationInfo info) {
-        if (BuildCompat.isM() || EliteInstaller.getContext().getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.M) {
+        if (info == null || EliteInstaller.getContext() == null) {
+            return false;
+        }
+        // Runtime permissions only exist on Android 6+. Legacy-target guests
+        // (<23) do not request them themselves, so the host must bridge those
+        // dangerous permissions when its own targetSdk participates in the
+        // runtime-permission model.
+        if (!BuildCompat.isM()) {
+            return false;
+        }
+        ApplicationInfo hostInfo = EliteInstaller.getContext().getApplicationInfo();
+        if (hostInfo == null || hostInfo.targetSdkVersion < Build.VERSION_CODES.M) {
             return false;
         }
         return info.targetSdkVersion < Build.VERSION_CODES.M;
@@ -140,14 +175,15 @@ public class PermissionUtils {
     }
 
     public static boolean isRequestGranted(int[] grantResults) {
-        boolean allGranted = true;
+        if (grantResults == null || grantResults.length == 0) {
+            return false;
+        }
         for (int grantResult : grantResults) {
-            if (grantResult == PackageManager.PERMISSION_DENIED) {
-                allGranted = false;
-                break;
+            if (grantResult != PackageManager.PERMISSION_GRANTED) {
+                return false;
             }
         }
-        return allGranted;
+        return true;
     }
 
 }
