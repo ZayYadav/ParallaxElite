@@ -57,8 +57,9 @@ public class ActiveServices {
         RunningServiceRecord runningServiceRecord = getOrCreateRunningServiceRecord(intent);
         runningServiceRecord.mServiceInfo = serviceInfo;
 
-        runningServiceRecord.getAndIncrementStartId();
-        final Intent stubServiceIntent = createStubServiceIntent(intent, serviceInfo, processRecord, runningServiceRecord);
+        final int startId = runningServiceRecord.getAndIncrementStartId();
+        final Intent stubServiceIntent = createStubServiceIntent(
+                intent, serviceInfo, processRecord, runningServiceRecord, startId);
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -148,7 +149,9 @@ public class ActiveServices {
                 runningServiceRecord.mConnectedServiceRecord = connectedService;
             }
         }
-        return createStubServiceIntent(intent, serviceInfo, processRecord, runningServiceRecord);
+        return createStubServiceIntent(
+                intent, serviceInfo, processRecord, runningServiceRecord,
+                runningServiceRecord.mStartId.get());
     }
 
     public void unbindService(IBinder binder, int userId) {
@@ -201,12 +204,17 @@ public class ActiveServices {
         return record;
     }
 
-    private Intent createStubServiceIntent(Intent targetIntent, ServiceInfo serviceInfo, ProcessRecord processRecord, RunningServiceRecord runningServiceRecord) {
+    private Intent createStubServiceIntent(Intent targetIntent, ServiceInfo serviceInfo,
+                                           ProcessRecord processRecord,
+                                           RunningServiceRecord runningServiceRecord,
+                                           int startId) {
         Intent stub = new Intent();
         ComponentName stubComp = new ComponentName(EliteInstaller.getHostPkg(), ProxyManifest.getProxyService(processRecord.bpid));
         stub.setComponent(stubComp);
         stub.setAction(UUID.randomUUID().toString());
-        ProxyServiceRecord.saveStub(stub, targetIntent, serviceInfo, runningServiceRecord, processRecord.userId, runningServiceRecord.mStartId.get());
+        ProxyServiceRecord.saveStub(
+                stub, targetIntent, serviceInfo, runningServiceRecord,
+                processRecord.userId, startId);
         return stub;
     }
 
