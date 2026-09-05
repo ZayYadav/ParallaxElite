@@ -220,26 +220,22 @@ public class IActivityManagerProxy extends ClassInvocationStub {
     public static class StartService extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            Intent intent = (Intent) args[1];
-            String resolvedType = (String) args[2];
-            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveService(intent, 0, resolvedType, BActivityThread.getUserId());
+            int intentIndex = findIntentIndex(args);
+            if (intentIndex < 0) {
+                return method.invoke(who, args);
+            }
+
+            Intent intent = (Intent) args[intentIndex];
+            String resolvedType = findStringAfter(args, intentIndex);
+            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveService(
+                    intent, 0, resolvedType, BActivityThread.getUserId());
             if (resolveInfo == null) {
                 return method.invoke(who, args);
             }
 
-            int requireForegroundIndex = getRequireForeground();
-            boolean requireForeground = false;
-            if (requireForegroundIndex != -1) {
-                requireForeground = (boolean) args[requireForegroundIndex];
-            }
-            return EliteInstaller.getBActivityManager().startService(intent, resolvedType, requireForeground, BActivityThread.getUserId());
-        }
-
-        public int getRequireForeground() {
-            if (BuildCompat.isOreo()) {
-                return 3;
-            }
-            return -1;
+            boolean requireForeground = findBooleanAfter(args, intentIndex);
+            return EliteInstaller.getBActivityManager().startService(
+                    intent, resolvedType, requireForeground, BActivityThread.getUserId());
         }
     }
 
@@ -247,10 +243,45 @@ public class IActivityManagerProxy extends ClassInvocationStub {
     public static class StopService extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            Intent intent = (Intent) args[1];
-            String resolvedType = (String) args[2];
-            return EliteInstaller.getBActivityManager().stopService(intent, resolvedType, BActivityThread.getUserId());
+            int intentIndex = findIntentIndex(args);
+            if (intentIndex < 0) {
+                return method.invoke(who, args);
+            }
+            Intent intent = (Intent) args[intentIndex];
+            String resolvedType = findStringAfter(args, intentIndex);
+            return EliteInstaller.getBActivityManager().stopService(
+                    intent, resolvedType, BActivityThread.getUserId());
         }
+    }
+
+    private static int findIntentIndex(Object[] args) {
+        if (args == null) return -1;
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof Intent) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static String findStringAfter(Object[] args, int afterIndex) {
+        if (args == null) return null;
+        for (int i = Math.max(0, afterIndex + 1); i < args.length; i++) {
+            if (args[i] instanceof String) {
+                return (String) args[i];
+            }
+        }
+        return null;
+    }
+
+    private static boolean findBooleanAfter(Object[] args, int afterIndex) {
+        if (args == null) return false;
+        for (int i = Math.max(0, afterIndex + 1); i < args.length; i++) {
+            if (args[i] instanceof Boolean) {
+                return (Boolean) args[i];
+            }
+        }
+        return false;
     }
 
     @ProxyMethod("stopServiceToken")
@@ -264,63 +295,88 @@ public class IActivityManagerProxy extends ClassInvocationStub {
         }
     }
     
-    //TODO 待修复
     @ProxyMethod("bindService")
     public static class BindService extends MethodHook {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            Intent intent = (Intent) args[2];
-            String resolvedType = (String) args[3];
-            IServiceConnection connection = (IServiceConnection) args[4];
+            int intentIndex = findIntentIndex(args);
+            int connectionIndex = MethodParameterUtils.getIndex(args, IServiceConnection.class);
+            if (intentIndex < 0) {
+                return method.invoke(who, args);
+            }
+
+            Intent intent = (Intent) args[intentIndex];
+            String resolvedType = findStringAfter(args, intentIndex);
+            IServiceConnection connection = connectionIndex >= 0
+                    ? (IServiceConnection) args[connectionIndex] : null;
 
             int userId = intent.getIntExtra("_G_|_UserId", -1);
             userId = userId == -1 ? BActivityThread.getUserId() : userId;
-            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveService(intent, 0, resolvedType, userId);
-            if (resolveInfo != null || AppSystemEnv.isOpenPackage(intent.getComponent())) {
-                Intent bindService = EliteInstaller.getBActivityManager().bindService(intent,connection == null ? null : connection.asBinder(),resolvedType,userId);
-                if (connection != null) {
-                    if (intent.getComponent() == null && resolveInfo != null) {
-                        intent.setComponent(new ComponentName(resolveInfo.serviceInfo.packageName, resolveInfo.serviceInfo.name));
-                    }
-                    IServiceConnection proxy = ServiceConnectionDelegate.createProxy(connection, intent);
-                    args[4] = proxy;
 
-                    WeakReference<?> weakReference = BRLoadedApkServiceDispatcherInnerConnection.get(connection).mDispatcher();
-                    if (weakReference != null) {
-                        BRLoadedApkServiceDispatcher.get(weakReference.get())._set_mConnection(proxy);
+            ResolveInfo resolveInfo = EliteInstaller.getBPackageManager().resolveService(
+                    intent, 0, resolvedType, userId);
+            ComponentName component = intent.getComponent();
+            boolean openSystemComponent = component != null
+                    && AppSystemEnv.isOpenPackage(component);
+            if (resolveInfo == null && !openSystemComponent) {
+                return method.invoke(who, args);
+            }
+
+            Intent bindService = EliteInstaller.getBActivityManager().bindService(
+                    intent,
+                    connection == null ? null : connection.asBinder(),
+                    resolvedType,
+                    userId);
+
+            if (connection != null && connectionIndex >= 0) {
+                if (intent.getComponent() == null
+                        && resolveInfo != null
+                        && resolveInfo.serviceInfo != null) {
+                    intent.setComponent(new ComponentName(
+                            resolveInfo.serviceInfo.packageName,
+                            resolveInfo.serviceInfo.name));
+                }
+
+                IServiceConnection proxy =
+                        ServiceConnectionDelegate.createProxy(connection, intent);
+                args[connectionIndex] = proxy;
+
+                try {
+                    WeakReference<?> weakReference =
+                            BRLoadedApkServiceDispatcherInnerConnection
+                                    .get(connection).mDispatcher();
+                    if (weakReference != null && weakReference.get() != null) {
+                        BRLoadedApkServiceDispatcher.get(weakReference.get())
+                                ._set_mConnection(proxy);
                     }
+                } catch (Throwable ignored) {
+                    // OEM LoadedApk internals can differ. The Binder call still
+                    // receives the proxy connection even if local dispatcher
+                    // reflection is unavailable.
                 }
-                if (bindService != null) {
-                    args[2] = bindService;
-                    return method.invoke(who, args);
-                }
+            }
+
+            if (bindService != null) {
+                args[intentIndex] = bindService;
+                return method.invoke(who, args);
             }
             return 0;
         }
 
         @Override
         protected boolean isEnable() {
-            return EliteInstaller.get().isBlackProcess() || EliteInstaller.get().isServerProcess();
+            return EliteInstaller.get().isBlackProcess()
+                    || EliteInstaller.get().isServerProcess();
         }
     }
 
-    //android 13.0变更
     @ProxyMethod("bindServiceInstance")
-    public static class BindServiceInstance extends BindIsolatedService {
-
+    public static class BindServiceInstance extends BindService {
     }
-    
 
-    // 10.0
     @ProxyMethod("bindIsolatedService")
     public static class BindIsolatedService extends BindService {
-        @Override
-        protected Object beforeHook(Object who, Method method, Object[] args) throws Throwable {
-            // instanceName
-            args[6] = null;
-            return super.beforeHook(who, method, args);
-        }
     }
 
     @ProxyMethod("unbindService")
@@ -696,13 +752,20 @@ public class IActivityManagerProxy extends ClassInvocationStub {
         }
     }
 
-    // for < Android 10
+    // for < Android 10 and OEM variants that still route through AMS
     @ProxyMethod("setTaskDescription")
     public static class SetTaskDescription extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            ActivityManager.TaskDescription td = (ActivityManager.TaskDescription) args[1];
-            args[1] = TaskDescriptionCompat.fix(td);
+            if (args != null) {
+                for (int i = 0; i < args.length; i++) {
+                    if (args[i] instanceof ActivityManager.TaskDescription) {
+                        args[i] = TaskDescriptionCompat.fix(
+                                (ActivityManager.TaskDescription) args[i]);
+                        break;
+                    }
+                }
+            }
             return method.invoke(who, args);
         }
     }
