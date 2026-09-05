@@ -32,7 +32,15 @@ public class ServiceRecord {
         }
 
         public int decrementAndGetBindCount() {
-            return mBindCount.decrementAndGet();
+            while (true) {
+                int current = mBindCount.get();
+                if (current <= 0) {
+                    return 0;
+                }
+                if (mBindCount.compareAndSet(current, current - 1)) {
+                    return current - 1;
+                }
+            }
         }
 
         public IBinder getIBinder() {
@@ -78,6 +86,9 @@ public class ServiceRecord {
             mBounds.put(filterComparison, boundInfo);
         }
         boundInfo.setIBinder(iBinder);
+        if (iBinder == null) {
+            return;
+        }
         try {
             iBinder.linkToDeath(new IBinder.DeathRecipient() {
                 @Override
