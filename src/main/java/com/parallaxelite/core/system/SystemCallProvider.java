@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.parallaxelite.utils.Slog;
+import com.parallaxelite.compat.oauth.TwitterKitExternalAuthBroker;
 import com.parallaxelite.utils.compat.BundleCompat;
 
 /**
@@ -37,6 +38,12 @@ public class SystemCallProvider extends ContentProvider {
     @Override
     public Bundle call(@NonNull String method, @Nullable String arg, @Nullable Bundle extras) {
         Slog.d(TAG, "call: " + method + ", " + extras);
+        if (TwitterKitExternalAuthBroker.METHOD_BEGIN.equals(method)
+                || TwitterKitExternalAuthBroker.METHOD_CANCEL.equals(method)
+                || TwitterKitExternalAuthBroker.METHOD_COMPLETE.equals(method)) {
+            return TwitterKitExternalAuthBroker.handleSystemCall(method, extras);
+        }
+
         if ("VM".equals(method)) {
             Bundle bundle = new Bundle();
             if (extras != null) {
