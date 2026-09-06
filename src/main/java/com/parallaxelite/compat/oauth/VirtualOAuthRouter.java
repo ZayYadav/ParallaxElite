@@ -14,7 +14,6 @@ import java.util.Set;
 import org.lsposed.lsparanoid.Obfuscate;
 
 import com.parallaxelite.ParallaxELiteInstaller;
-import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.fake.frameworks.BPackageManager;
 import com.parallaxelite.utils.FileUtils;
 
@@ -100,15 +99,12 @@ public final class VirtualOAuthRouter {
             return null;
         }
 
-        // Facebook and Twitter/X use private in-app WebView fallbacks. Twitter/X
-        // is still offered to the installed official app first by ExternalAuthRouter.
-        // Other OAuth providers keep the existing AndroidX Auth Tab path.
-        boolean facebookFlow = FacebookAuthHost.matches(authUri);
-        boolean twitterFlow = isTwitterHost(authUri);
-        String authProvider = (facebookFlow || twitterFlow) ? null : AuthTabCompat.findProvider(
+        // Do not steal the browser flow unless the real phone has a browser that
+        // explicitly advertises AndroidX Auth Tab support. A normal ACTION_VIEW
+        // browser cannot return arbitrary virtual custom schemes to this SDK.
+        String authProvider = AuthTabCompat.findProvider(
                 ParallaxELiteInstaller.getContext(), authUri);
-        if (!facebookFlow && !twitterFlow
-                && (authProvider == null || authProvider.trim().isEmpty())) {
+        if (authProvider == null || authProvider.trim().isEmpty()) {
             return null;
         }
 
@@ -120,15 +116,7 @@ public final class VirtualOAuthRouter {
         bridge.putExtra(EXTRA_REDIRECT_URI, redirectUri.toString());
         bridge.putExtra(EXTRA_VIRTUAL_PACKAGE, virtualPackage);
         bridge.putExtra(EXTRA_USER_ID, userId);
-        if (authProvider != null) {
-            bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider);
-        }
-        if (facebookFlow) {
-            int bpid = BActivityThread.getAppPid();
-            if (bpid >= 0 && bpid <= 24) {
-                bridge.putExtra(FacebookCustomTabResultCompat.EXTRA_BPID, bpid);
-            }
-        }
+        bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider);
         bridge.addFlags(source.getFlags() & (
                 Intent.FLAG_ACTIVITY_NEW_TASK
                         | Intent.FLAG_ACTIVITY_CLEAR_TOP
