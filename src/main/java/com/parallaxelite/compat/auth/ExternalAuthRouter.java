@@ -13,6 +13,7 @@ import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import org.lsposed.lsparanoid.Obfuscate;
@@ -502,6 +503,37 @@ public final class ExternalAuthRouter {
             }
         }
 
+        // GCloud/IMSDK payloads vary between releases. Some builds wrap the
+        // already-created OAuth URL in ArrayList/Map/Object[] containers instead
+        // of a plain Bundle. Walk only common bounded containers; never inspect
+        // arbitrary object fields or log any value.
+        if (value instanceof Object[]) {
+            int scanned = 0;
+            for (Object item : (Object[]) value) {
+                if (scanned++ >= 32) break;
+                Uri found = twitterOAuthUriFromValue(item, depth + 1);
+                if (found != null) return found;
+            }
+        }
+
+        if (value instanceof Iterable<?>) {
+            int scanned = 0;
+            for (Object item : (Iterable<?>) value) {
+                if (scanned++ >= 32) break;
+                Uri found = twitterOAuthUriFromValue(item, depth + 1);
+                if (found != null) return found;
+            }
+        }
+
+        if (value instanceof Map<?, ?>) {
+            int scanned = 0;
+            for (Object item : ((Map<?, ?>) value).values()) {
+                if (scanned++ >= 32) break;
+                Uri found = twitterOAuthUriFromValue(item, depth + 1);
+                if (found != null) return found;
+            }
+        }
+
         return null;
     }
 
@@ -527,7 +559,10 @@ public final class ExternalAuthRouter {
             String redirectUri = template.getStringExtra(VirtualOAuthRouter.EXTRA_REDIRECT_URI);
             String authProvider = template.getStringExtra(VirtualOAuthRouter.EXTRA_AUTH_PROVIDER);
             int userId = template.getIntExtra(VirtualOAuthRouter.EXTRA_USER_ID, -1);
-            if (authUrl == null || redirectUri == null || authProvider == null || userId < 0) {
+            // Twitter/Facebook intentionally do not have an Auth Tab provider:
+            // their bridge launches the private provider-specific WebView. Requiring
+            // EXTRA_AUTH_PROVIDER here made the Twitter fallback unreachable.
+            if (authUrl == null || redirectUri == null || userId < 0) {
                 return null;
             }
 
@@ -540,7 +575,9 @@ public final class ExternalAuthRouter {
             bridge.putExtra(EXTRA_USER_ID, userId);
             bridge.putExtra(VirtualOAuthRouter.EXTRA_AUTH_URL, authUrl);
             bridge.putExtra(VirtualOAuthRouter.EXTRA_REDIRECT_URI, redirectUri);
-            bridge.putExtra(VirtualOAuthRouter.EXTRA_AUTH_PROVIDER, authProvider);
+            if (authProvider != null && !authProvider.trim().isEmpty()) {
+                bridge.putExtra(VirtualOAuthRouter.EXTRA_AUTH_PROVIDER, authProvider);
+            }
             bridge.putExtra(VirtualOAuthRouter.EXTRA_VIRTUAL_PACKAGE, virtualPackage);
             bridge.putExtra(VirtualOAuthRouter.EXTRA_USER_ID, userId);
             putResultTarget(bridge, resultTo, resultWho, requestCode, virtualPackage);
