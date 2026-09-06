@@ -14,6 +14,7 @@ import java.util.Set;
 import org.lsposed.lsparanoid.Obfuscate;
 
 import com.parallaxelite.ParallaxELiteInstaller;
+import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.fake.frameworks.BPackageManager;
 import com.parallaxelite.utils.FileUtils;
 
@@ -121,6 +122,12 @@ public final class VirtualOAuthRouter {
         bridge.putExtra(EXTRA_USER_ID, userId);
         if (authProvider != null) {
             bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider);
+        }
+        if (facebookFlow) {
+            int bpid = BActivityThread.getAppPid();
+            if (bpid >= 0 && bpid <= 24) {
+                bridge.putExtra(FacebookCustomTabResultCompat.EXTRA_BPID, bpid);
+            }
         }
         bridge.addFlags(source.getFlags() & (
                 Intent.FLAG_ACTIVITY_NEW_TASK
