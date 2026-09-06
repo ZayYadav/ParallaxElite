@@ -12,8 +12,10 @@ import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebViewDatabase;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -27,6 +29,10 @@ import android.widget.TextView;
  * host bridge after strict callback/state validation.
  */
 public final class FacebookWebViewActivity extends Activity {
+    private static final String WEBVIEW_PROFILE_SUFFIX = "parallax_facebook_auth";
+    private static final String STATE_SESSION_READY =
+            "com.parallaxelite.facebookweb.SESSION_READY";
+
     static final String EXTRA_AUTH_URL =
             "com.parallaxelite.facebookweb.AUTH_URL";
     static final String EXTRA_REDIRECT_URI =
@@ -37,10 +43,13 @@ public final class FacebookWebViewActivity extends Activity {
     private Uri authUri;
     private Uri expectedRedirectUri;
     private boolean completed;
+    private boolean sessionReady;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        configureIsolatedWebViewProfile();
 
         Intent launch = getIntent();
         authUri = parseUri(launch == null ? null : launch.getStringExtra(EXTRA_AUTH_URL));
@@ -55,14 +64,20 @@ public final class FacebookWebViewActivity extends Activity {
 
         createContentView();
 
-        if (savedInstanceState == null) {
-            webView.loadUrl(authUri.toString());
-        } else {
+        sessionReady = savedInstanceState != null
+                && savedInstanceState.getBoolean(STATE_SESSION_READY, false);
+
+        if (sessionReady) {
+            boolean restored = false;
             try {
-                webView.restoreState(savedInstanceState);
+                restored = webView.restoreState(savedInstanceState) != null;
             } catch (Throwable ignored) {
+            }
+            if (!restored) {
                 webView.loadUrl(authUri.toString());
             }
+        } else {
+            prepareFreshFacebookSession();
         }
     }
 
@@ -110,6 +125,8 @@ public final class FacebookWebViewActivity extends Activity {
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setSupportMultipleWindows(false);
         settings.setLoadsImagesAutomatically(true);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        settings.setSaveFormData(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
@@ -149,6 +166,95 @@ public final class FacebookWebViewActivity extends Activity {
                 return handleMainFrameNavigation(parseUri(url));
             }
         });
+    }
+
+    /**
+     * Android 9+ forbids multiple WebView processes from sharing one data
+     * directory. Facebook auth runs in its own manifest process, so give that
+     * process a dedicated WebView profile before CookieManager/WebView are used.
+     */
+    private void configureIsolatedWebViewProfile() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            return;
+        }
+        try {
+            WebView.setDataDirectorySuffix(WEBVIEW_PROFILE_SUFFIX);
+        } catch (IllegalStateException ignored) {
+            // A WebView was already initialized in this process. We still clear
+            // its cookie/storage state below before loading any Facebook page.
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * A new Facebook login attempt must never inherit the previous Facebook ID.
+     *
+     * This activity lives in :facebookauth, so removeAllCookies() only clears
+     * this isolated auth profile on Android 9+ and does not touch the loader's
+     * normal WebView/browser state. Storage, form data, HTTP auth, cache and
+     * history are cleared before the OAuth URL is loaded.
+     */
+    private void prepareFreshFacebookSession() {
+        if (webView == null || isFinishing()) {
+            cancelAndFinish();
+            return;
+        }
+
+        clearNonCookieWebState();
+
+        CookieManager cookies;
+        try {
+            cookies = CookieManager.getInstance();
+            cookies.setAcceptCookie(true);
+            cookies.setAcceptThirdPartyCookies(webView, true);
+        } catch (Throwable error) {
+            cancelAndFinish();
+            return;
+        }
+
+        try {
+            cookies.removeAllCookies(removed -> runOnUiThread(() -> {
+                if (isFinishing() || completed || webView == null) {
+                    return;
+                }
+                try {
+                    cookies.flush();
+                } catch (Throwable ignored) {
+                }
+                clearNonCookieWebState();
+                sessionReady = true;
+                webView.loadUrl(authUri.toString());
+            }));
+        } catch (Throwable error) {
+            // Old/broken WebView implementations may throw before invoking the
+            // callback. Falling through without clearing would silently reuse
+            // the previous Facebook account, so fail closed instead.
+            cancelAndFinish();
+        }
+    }
+
+    private void clearNonCookieWebState() {
+        try {
+            WebStorage.getInstance().deleteAllData();
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            WebViewDatabase db = WebViewDatabase.getInstance(this);
+            db.clearFormData();
+            db.clearHttpAuthUsernamePassword();
+        } catch (Throwable ignored) {
+        }
+
+        if (webView != null) {
+            try {
+                webView.stopLoading();
+                webView.clearCache(true);
+                webView.clearHistory();
+                webView.clearFormData();
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     private boolean handleMainFrameNavigation(Uri candidate) {
@@ -220,6 +326,7 @@ public final class FacebookWebViewActivity extends Activity {
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(STATE_SESSION_READY, sessionReady);
         if (webView != null) {
             try {
                 webView.saveState(outState);
