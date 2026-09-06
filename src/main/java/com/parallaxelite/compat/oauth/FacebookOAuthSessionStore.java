@@ -26,9 +26,11 @@ final class FacebookOAuthSessionStore {
     private FacebookOAuthSessionStore() {
     }
 
-    static long begin(Uri authUri, Uri expectedRedirectUri, String virtualPackage, int userId) {
+    static long begin(Uri authUri, Uri expectedRedirectUri, String virtualPackage,
+                      int userId, int bpid) {
         if (authUri == null || expectedRedirectUri == null
-                || virtualPackage == null || virtualPackage.trim().isEmpty() || userId < 0) {
+                || virtualPackage == null || virtualPackage.trim().isEmpty()
+                || userId < 0 || bpid < 0 || bpid > 24) {
             return -1L;
         }
         synchronized (LOCK) {
@@ -48,6 +50,7 @@ final class FacebookOAuthSessionStore {
                     expectedRedirectUri,
                     virtualPackage,
                     userId,
+                    bpid,
                     now));
             return generation;
         }
@@ -80,7 +83,11 @@ final class FacebookOAuthSessionStore {
                 return null;
             }
             matched.claimed = true;
-            return new Claim(matched.generation, matched.virtualPackage, matched.userId);
+            return new Claim(
+                    matched.generation,
+                    matched.virtualPackage,
+                    matched.userId,
+                    matched.bpid);
         }
     }
 
@@ -172,11 +179,13 @@ final class FacebookOAuthSessionStore {
         final long generation;
         final String virtualPackage;
         final int userId;
+        final int bpid;
 
-        Claim(long generation, String virtualPackage, int userId) {
+        Claim(long generation, String virtualPackage, int userId, int bpid) {
             this.generation = generation;
             this.virtualPackage = virtualPackage;
             this.userId = userId;
+            this.bpid = bpid;
         }
     }
 
@@ -186,6 +195,7 @@ final class FacebookOAuthSessionStore {
         final Uri expectedRedirectUri;
         final String virtualPackage;
         final int userId;
+        final int bpid;
         final long startedAt;
         boolean claimed;
         boolean completed;
@@ -196,12 +206,14 @@ final class FacebookOAuthSessionStore {
                 Uri expectedRedirectUri,
                 String virtualPackage,
                 int userId,
+                int bpid,
                 long startedAt) {
             this.generation = generation;
             this.authUri = authUri;
             this.expectedRedirectUri = expectedRedirectUri;
             this.virtualPackage = virtualPackage;
             this.userId = userId;
+            this.bpid = bpid;
             this.startedAt = startedAt;
         }
     }
