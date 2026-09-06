@@ -146,6 +146,18 @@ public class ActivityStack {
                 break;
         }
 
+        // CLEAR_TOP/SINGLE_TOP callbacks must target the task that already owns
+        // the live Activity instance. Affinity alone is ambiguous when a virtual
+        // app has duplicate/stale tasks (Facebook CustomTabMainActivity is a
+        // common example after browser handoff).
+        if (clearTop || singleTop) {
+            TaskRecord componentTask = findTaskRecordContainingActiveComponentLocked(
+                    userId, ComponentUtils.toComponentName(activityInfo));
+            if (componentTask != null) {
+                taskRecord = componentTask;
+            }
+        }
+
         // 如果还没有task则新启动一个task
         if (taskRecord == null || taskRecord.needNewTask()) {
             return startActivityInNewTaskLocked(userId, intent, activityInfo, resultTo, launchModeFlags);
@@ -166,7 +178,8 @@ public class ActivityStack {
         boolean startTaskToFront = !notStartToFront && ComponentUtils.intentFilterEquals(taskRecord.rootIntent, intent) && taskRecord.rootIntent.getFlags() == intent.getFlags();
         if (startTaskToFront) return 0;
         ActivityRecord topActivityRecord = taskRecord.getTopActivityRecord();
-        ActivityRecord targetActivityRecord = findActivityRecordByComponentName(userId, ComponentUtils.toComponentName(activityInfo));
+        ActivityRecord targetActivityRecord = findActivityRecordByComponentName(
+                taskRecord, ComponentUtils.toComponentName(activityInfo));
         ActivityRecord newIntentRecord = null;
         boolean ignore = false;
 
@@ -212,7 +225,8 @@ public class ActivityStack {
             if (ComponentUtils.intentFilterEquals(topActivityRecord.intent, intent)) {
                 newIntentRecord = topActivityRecord;
             } else {
-                ActivityRecord record = findActivityRecordByComponentName(userId, ComponentUtils.toComponentName(activityInfo));
+                ActivityRecord record = findActivityRecordByComponentName(
+                        taskRecord, ComponentUtils.toComponentName(activityInfo));
                 if (record != null) {
                     // 需要调用目标onNewIntent
                     newIntentRecord = record;
@@ -407,6 +421,46 @@ public class ActivityStack {
             mHandler.sendMessageDelayed(obtain, 2000);
         }
         return targetRecord;
+    }
+
+    private TaskRecord findTaskRecordContainingActiveComponentLocked(
+            int userId, ComponentName componentName) {
+        if (componentName == null) {
+            return null;
+        }
+        TaskRecord matched = null;
+        synchronized (mTasks) {
+            // mTasks is a LinkedHashMap. Keep the newest matching task when more
+            // than one stale task contains the same component.
+            for (TaskRecord task : mTasks.values()) {
+                if (task == null || task.userId != userId) {
+                    continue;
+                }
+                if (findActivityRecordByComponentName(task, componentName) != null) {
+                    matched = task;
+                }
+            }
+        }
+        return matched;
+    }
+
+    private ActivityRecord findActivityRecordByComponentName(
+            TaskRecord taskRecord, ComponentName componentName) {
+        if (taskRecord == null || componentName == null) {
+            return null;
+        }
+        synchronized (taskRecord.activities) {
+            // Prefer the uppermost live instance in this exact task.
+            for (int i = taskRecord.activities.size() - 1; i >= 0; i--) {
+                ActivityRecord activity = taskRecord.activities.get(i);
+                if (activity != null
+                        && !activity.finished
+                        && componentName.equals(activity.component)) {
+                    return activity;
+                }
+            }
+        }
+        return null;
     }
 
     private ActivityRecord findActivityRecordByComponentName(int userId, ComponentName componentName) {
