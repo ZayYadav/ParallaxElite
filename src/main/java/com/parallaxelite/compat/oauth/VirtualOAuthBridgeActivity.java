@@ -84,10 +84,6 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                 ExternalAuthRouter.EXTRA_MANUAL_RESULT_RELAY, false);
         resultBpid = launchIntent == null ? -1
                 : launchIntent.getIntExtra(ExternalAuthRouter.EXTRA_BPID, -1);
-        if (resultBpid < 0 && launchIntent != null) {
-            resultBpid = launchIntent.getIntExtra(
-                    FacebookCustomTabResultCompat.EXTRA_BPID, -1);
-        }
 
         if (externalAuthMode) {
             virtualPackage = launchIntent.getStringExtra(
@@ -116,13 +112,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
 
         authUri = safeHttpsUri(authUrl);
         Uri redirectUri = safeCustomRedirectUri(redirectUriValue);
-        boolean facebookCandidate = FacebookAuthHost.matches(authUri);
-        boolean twitterCandidate = isTwitterHost(authUri);
         if (authUri == null || !VirtualOAuthRouter.isTrustedAuthUri(authUri)
                 || redirectUri == null || virtualPackage == null
                 || virtualPackage.trim().isEmpty() || userId < 0
-                || (!facebookCandidate && !twitterCandidate
-                    && (authProvider == null || authProvider.trim().isEmpty()))) {
+                || authProvider == null || authProvider.trim().isEmpty()) {
             if (resultBridgeMode) {
                 completeBridgeResult(RESULT_CANCELED, null);
             } else {
@@ -132,12 +125,11 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         }
 
         expectedRedirectUri = redirectUri;
-        facebookFlow = facebookCandidate;
-        twitterFlow = twitterCandidate;
+        facebookFlow = isFacebookHost(authUri);
+        twitterFlow = isTwitterHost(authUri);
         legacyTwitterFlow = twitterFlow && hasQueryParameter(authUri, "oauth_token");
         if (!redirectResolvesToVirtualPackage(redirectUri)
-                || (!facebookFlow && !twitterFlow
-                    && !AuthTabCompat.isSupportedProvider(this, authProvider, authUri))) {
+                || !AuthTabCompat.isSupportedProvider(this, authProvider, authUri)) {
             diagnostic("setup_rejected", false, false, false, false, false);
             facebookDiagnostic("setup_rejected", RESULT_CANCELED, null, null, false);
             if (resultBridgeMode) {
@@ -159,55 +151,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         if (savedInstanceState == null) {
             if (facebookFlow) {
                 FacebookOAuthSessionStore.begin(
-                        authUri, expectedRedirectUri, virtualPackage, userId, resultBpid);
+                        authUri, expectedRedirectUri, virtualPackage, userId);
                 facebookDiagnostic("session_started", RESULT_CANCELED, null, null, false);
-                launchFacebookWebView(authUri, expectedRedirectUri);
-            } else if (twitterFlow) {
-                diagnostic("webview_fallback_launch",
-                        false, false, false, false, false);
-                launchTwitterWebView(authUri, expectedRedirectUri);
-            } else {
-                launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
             }
-        }
-    }
-
-    private void launchFacebookWebView(Uri authUri, Uri redirectUri) {
-        try {
-            Intent webViewIntent = new Intent(this, FacebookWebViewActivity.class);
-            webViewIntent.putExtra(
-                    FacebookWebViewActivity.EXTRA_AUTH_URL, authUri.toString());
-            webViewIntent.putExtra(
-                    FacebookWebViewActivity.EXTRA_REDIRECT_URI, redirectUri.toString());
-            startActivityForResult(webViewIntent, REQUEST_AUTH_TAB);
-            facebookDiagnostic("webview_launch", RESULT_CANCELED, null, null, false);
-        } catch (Throwable ignored) {
-            facebookDiagnostic("webview_launch_failed", RESULT_CANCELED, null, null, false);
-            FacebookOAuthSessionStore.clear(virtualPackage, userId);
-            if (resultBridgeMode) {
-                completeBridgeResult(RESULT_CANCELED, null);
-            } else {
-                finish();
-            }
-        }
-    }
-
-    private void launchTwitterWebView(Uri authUri, Uri redirectUri) {
-        try {
-            Intent webViewIntent = new Intent(this, TwitterWebViewActivity.class);
-            webViewIntent.putExtra(
-                    TwitterWebViewActivity.EXTRA_AUTH_URL, authUri.toString());
-            webViewIntent.putExtra(
-                    TwitterWebViewActivity.EXTRA_REDIRECT_URI, redirectUri.toString());
-            startActivityForResult(webViewIntent, REQUEST_AUTH_TAB);
-        } catch (Throwable ignored) {
-            diagnostic("webview_fallback_failed",
-                    false, false, false, false, false);
-            if (resultBridgeMode) {
-                completeBridgeResult(RESULT_CANCELED, null);
-            } else {
-                finish();
-            }
+            launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
         }
     }
 
@@ -385,24 +332,8 @@ public final class VirtualOAuthBridgeActivity extends Activity {
             if (!delivered && claim != null
                     && virtualPackage.equals(claim.virtualPackage)
                     && userId == claim.userId) {
-                // Primary path: finish Meta's already-waiting guest
-                // CustomTabMainActivity with RESULT_OK + extra_url. This is the
-                // exact Activity-result contract consumed by
-                // CustomTabLoginMethodHandler (requestCode 1), so Meta keeps
-                // ownership of state validation and code/token exchange.
-                delivered = deliverFacebookCallbackToGuestCustomTab(
-                        claim.virtualPackage,
-                        claim.userId,
-                        claim.bpid,
-                        callbackUri);
-
-                // Compatibility fallback for older/modified SDKs where the live
-                // CustomTabMainActivity cannot be observed in the guest process.
-                if (!delivered) {
-                    delivered = dispatchFacebookCallback(
-                            claim.virtualPackage, claim.userId, callbackUri);
-                }
-
+                delivered = dispatchFacebookCallback(
+                        claim.virtualPackage, claim.userId, callbackUri);
                 if (delivered) {
                     FacebookOAuthSessionStore.complete(claim.generation);
                 } else {
@@ -586,57 +517,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                 && redirectResolvesToVirtualPackage(callbackUri);
     }
 
-    static boolean deliverFacebookCallbackToGuestCustomTab(
-            String targetPackage, int targetUserId, int targetBpid, Uri callbackUri) {
-        if (callbackUri == null
-                || targetPackage == null
-                || targetPackage.trim().isEmpty()
-                || targetUserId < 0
-                || targetBpid < 0
-                || targetBpid > 24) {
-            return false;
-        }
-
-        try {
-            Bundle relay = new Bundle();
-            relay.putString(
-                    FacebookCustomTabResultCompat.EXTRA_CALLBACK_URL,
-                    callbackUri.toString());
-            relay.putString(
-                    FacebookCustomTabResultCompat.EXTRA_VIRTUAL_PACKAGE,
-                    targetPackage);
-            relay.putInt(
-                    FacebookCustomTabResultCompat.EXTRA_USER_ID,
-                    targetUserId);
-            relay.putInt(
-                    FacebookCustomTabResultCompat.EXTRA_BPID,
-                    targetBpid);
-
-            Bundle response = ProviderCall.callSafely(
-                    ProxyManifest.getProxyAuthorities(targetBpid),
-                    FacebookCustomTabResultCompat.METHOD_COMPLETE_GUEST,
-                    null,
-                    relay);
-            boolean delivered = response != null
-                    && response.getBoolean(
-                    FacebookCustomTabResultCompat.EXTRA_DELIVERED, false);
-            Log.i(TAG, "facebook stage=guest_custom_tab_result delivered=" + delivered);
-            return delivered;
-        } catch (Throwable ignored) {
-            Log.i(TAG, "facebook stage=guest_custom_tab_result delivered=false");
-            return false;
-        }
-    }
-
     private boolean dispatchToVirtualPackage(Uri callbackUri) {
-        if (isFacebookHost(authUri)) {
-            if (deliverFacebookCallbackToGuestCustomTab(
-                    virtualPackage, userId, resultBpid, callbackUri)) {
-                return true;
-            }
-            if (dispatchFacebookCallback(virtualPackage, userId, callbackUri)) {
-                return true;
-            }
+        if (isFacebookHost(authUri)
+                && dispatchFacebookCallback(virtualPackage, userId, callbackUri)) {
+            return true;
         }
 
         try {
@@ -669,19 +553,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
     }
 
     /**
-     * Re-enters Meta's own callback chain.
-     *
-     * Our private WebView has already performed the job normally done by the
-     * external browser + exported CustomTabActivity. The Facebook SDK keeps the
-     * original CustomTabMainActivity waiting underneath. Deliver the exact Meta
-     * redirect action/extra directly to that waiting instance so its onNewIntent
-     * returns RESULT_OK to FacebookActivity.
-     *
-     * Starting a fresh CustomTabActivity first is harmful in a virtual task: if
-     * Android/our task model cannot locate the waiting CustomTabMainActivity, a
-     * new Main instance receives the redirect action in onCreate and Meta
-     * intentionally returns RESULT_CANCELED. The logcat supplied from BGMI showed
-     * precisely that cancellation chain.
+     * Re-enters Meta's own callback chain. Prefer CustomTabActivity because its
+     * implementation is responsible for converting the browser redirect into the
+     * CustomTabMainActivity redirect action. If that component is unavailable in
+     * an older SDK, reproduce the same stable action/extra directly.
      */
     static boolean dispatchFacebookCallback(
             String targetPackage, int targetUserId, Uri callbackUri) {
@@ -691,46 +566,44 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         }
 
         if (virtualActivityExists(
-                targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY, targetUserId)) {
+                targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY, targetUserId)) {
             try {
-                Intent callback = new Intent();
+                Intent callback = new Intent(Intent.ACTION_VIEW, callbackUri);
                 callback.setComponent(new ComponentName(
-                        targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY));
-                callback.setAction(FACEBOOK_CUSTOM_TAB_REDIRECT_ACTION);
-                callback.putExtra(FACEBOOK_CUSTOM_TAB_EXTRA_URL, callbackUri.toString());
+                        targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY));
+                callback.addCategory(Intent.CATEGORY_DEFAULT);
+                callback.addCategory(Intent.CATEGORY_BROWSABLE);
                 callback.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
                         | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 BActivityManager.get().startActivity(callback, targetUserId);
-                Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=true");
+                Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=true");
                 return true;
             } catch (Throwable ignored) {
-                Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=false");
+                Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=false");
             }
         } else {
-            Log.i(TAG, "facebook stage=custom_tab_main_unavailable delivered=false");
+            Log.i(TAG, "facebook stage=custom_tab_activity_unavailable delivered=false");
         }
 
-        // Compatibility fallback for older Facebook SDKs that do not expose the
-        // expected Main component. This is deliberately second choice.
         if (!virtualActivityExists(
-                targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY, targetUserId)) {
-            Log.i(TAG, "facebook stage=custom_tab_activity_unavailable delivered=false");
+                targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY, targetUserId)) {
+            Log.i(TAG, "facebook stage=custom_tab_main_unavailable delivered=false");
             return false;
         }
 
         try {
-            Intent callback = new Intent(Intent.ACTION_VIEW, callbackUri);
+            Intent callback = new Intent();
             callback.setComponent(new ComponentName(
-                    targetPackage, FACEBOOK_CUSTOM_TAB_ACTIVITY));
-            callback.addCategory(Intent.CATEGORY_DEFAULT);
-            callback.addCategory(Intent.CATEGORY_BROWSABLE);
+                    targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY));
+            callback.setAction(FACEBOOK_CUSTOM_TAB_REDIRECT_ACTION);
+            callback.putExtra(FACEBOOK_CUSTOM_TAB_EXTRA_URL, callbackUri.toString());
             callback.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
                     | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             BActivityManager.get().startActivity(callback, targetUserId);
-            Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=true");
+            Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=true");
             return true;
         } catch (Throwable ignored) {
-            Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=false");
+            Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=false");
             return false;
         }
     }
