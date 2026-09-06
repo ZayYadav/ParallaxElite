@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           if [ -z "${PARALLAXSDK_ACTIONS_TOKEN:-}" ]; then
             echo "::error::Missing ParallaxElite secret PARALLAXSDK_ACTIONS_TOKEN."
-            echo "::error::Create a fine-grained GitHub token with access to ZayYadav/ParallaxSDK and Actions Read+Write plus Contents Read, then save it in ParallaxElite Actions secrets as PARALLAXSDK_ACTIONS_TOKEN."
+            echo "::error::Create a fine-grained GitHub token limited to ZayYadav/ParallaxSDK with Contents Read+Write and Actions Read, then save it in ParallaxElite Actions secrets as PARALLAXSDK_ACTIONS_TOKEN."
             exit 1
           fi
 
