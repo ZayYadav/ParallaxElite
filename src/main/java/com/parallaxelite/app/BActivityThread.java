@@ -61,6 +61,7 @@ import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.app.configuration.AppLifecycleCallback;
 import com.parallaxelite.app.dispatcher.AppServiceDispatcher;
 import com.parallaxelite.core.CrashHandler;
+import com.parallaxelite.compat.auth.TwitterKitExternalAppCompat;
 import com.parallaxelite.core.IBActivityThread;
 import com.parallaxelite.core.VCore;
 import com.parallaxelite.core.VNative;
@@ -391,6 +392,10 @@ public class BActivityThread extends IBActivityThread.Stub {
             }
             mInitialApplication = application;
             BRActivityThread.get(ParallaxELiteInstaller.mainThread())._set_mInitialApplication(mInitialApplication);
+            // Watch only Twitter Kit's legacy OAuthActivity. Modern X removed the
+            // old SingleSignOnActivity, so this preserves Twitter Kit's own token
+            // exchange while moving just the authorize UI into the installed X app.
+            TwitterKitExternalAppCompat.install(mInitialApplication);
             List<ProviderInfo> providers;
             installProviders(mInitialApplication, bindData.processName, bindData.providers);
             try {
