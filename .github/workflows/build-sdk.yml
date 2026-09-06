@@ -63,6 +63,12 @@ jobs:
           printf 'sdk.dir=%s\n' "${ANDROID_HOME}" > local.properties
           gradle --version
 
+      - name: Run auth regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle testReleaseUnitTest --no-daemon --stacktrace
+
       - name: Build ParallaxELite release AAR
         shell: bash
         run: |

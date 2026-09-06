@@ -34,12 +34,12 @@ import com.parallaxelite.utils.provider.ProviderCall;
  * bridge accepts the same validated URI without waiting for the exported callback
  * Activity.</p>
  *
- * <p>Current official X builds expose their app-link entry point as
- * {@code com.twitter.android/com.x.android.deeplink.XUrlInterpreterActivity}.
- * A real {@code /i/oauth2/authorize} URL is sent to that exact component only
- * after Android confirms that the installed Activity is enabled, exported and
- * accessible. Legacy URL-less Twitter Kit SSO probes are never rewritten to this
- * deep-link Activity.</p>
+ * <p>For a real {@code /i/oauth2/authorize} URL the bridge first prefers the
+ * installed provider's verified {@code com.x.android.main.MainActivity}, matching
+ * the current X app handoff observed by BGMI. Builds that expose the official
+ * {@code com.x.android.deeplink.XUrlInterpreterActivity} instead keep that as a
+ * verified fallback. Legacy URL-less Twitter Kit SSO probes are never rewritten
+ * to either OAuth2 surface.</p>
  */
 @Obfuscate
 public final class TwitterNativeAuthBridgeActivity extends Activity {
@@ -49,6 +49,8 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
     private static final long CALLBACK_SETTLE_MS = 1_800L;
 
     private static final String OFFICIAL_TWITTER_PACKAGE = "com.twitter.android";
+    private static final String X_MAIN_ACTIVITY =
+            "com.x.android.main.MainActivity";
     private static final String X_URL_INTERPRETER_ACTIVITY =
             "com.x.android.deeplink.XUrlInterpreterActivity";
 
@@ -127,20 +129,22 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         Intent prepared = new Intent(original);
         prepared.putExtra(ExternalAuthRouter.EXTRA_DIRECT_PROVIDER_DISPATCH, true);
 
-        if (OFFICIAL_TWITTER_PACKAGE.equals(providerPackage)
-                && TwitterOAuthUrl.isModernOAuth2Authorize(authUri.toString())) {
-            ComponentName exact = new ComponentName(
-                    OFFICIAL_TWITTER_PACKAGE, X_URL_INTERPRETER_ACTIVITY);
-            if (isLaunchableExactXAuthorizeComponent(exact, authUri)) {
+        if (TwitterOAuthUrl.isModernOAuth2Authorize(authUri.toString())) {
+            ComponentName exact =
+                    findPreferredModernAuthorizeComponent(providerPackage, authUri);
+            if (exact != null) {
                 prepared.setAction(Intent.ACTION_VIEW);
                 prepared.setData(authUri);
                 prepared.addCategory(Intent.CATEGORY_DEFAULT);
                 prepared.addCategory(Intent.CATEGORY_BROWSABLE);
                 prepared.setComponent(exact);
-                Log.i(TAG, "OAuth2 authorize handoff=verified_x_url_interpreter");
+                Log.i(TAG, X_MAIN_ACTIVITY.equals(exact.getClassName())
+                        ? "OAuth2 authorize handoff=verified_x_main_activity"
+                        : "OAuth2 authorize handoff=verified_x_url_interpreter");
                 return prepared;
             }
-            Log.w(TAG, "OAuth2 authorize handoff=package_fallback reason=component_unavailable");
+            Log.w(TAG,
+                    "OAuth2 authorize handoff=package_fallback reason=component_unavailable");
         }
 
         prepared.setComponent(null);
@@ -148,17 +152,44 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         return prepared;
     }
 
+    private ComponentName findPreferredModernAuthorizeComponent(
+            String providerPackage,
+            Uri authUri) {
+        ComponentName[] candidates = new ComponentName[]{
+                new ComponentName(providerPackage, X_MAIN_ACTIVITY),
+                new ComponentName(OFFICIAL_TWITTER_PACKAGE, X_MAIN_ACTIVITY),
+                new ComponentName("com.x.android", X_MAIN_ACTIVITY),
+                new ComponentName(providerPackage, X_URL_INTERPRETER_ACTIVITY),
+                new ComponentName(OFFICIAL_TWITTER_PACKAGE, X_URL_INTERPRETER_ACTIVITY),
+                new ComponentName("com.x.android", X_URL_INTERPRETER_ACTIVITY)
+        };
+        for (ComponentName candidate : candidates) {
+            if (candidate == null
+                    || !ExternalAuthRouter.isTwitterProviderPackage(
+                    candidate.getPackageName())) {
+                continue;
+            }
+            if (isLaunchableExactXAuthorizeComponent(candidate, authUri)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
     private boolean isLaunchableExactXAuthorizeComponent(
             ComponentName component,
             Uri authUri) {
         try {
-            if (component == null || authUri == null || ParallaxELiteInstaller.getContext() == null) {
+            if (component == null || authUri == null
+                    || ParallaxELiteInstaller.getContext() == null
+                    || !ExternalAuthRouter.isTwitterProviderPackage(
+                    component.getPackageName())) {
                 return false;
             }
 
             PackageManager pm = ParallaxELiteInstaller.getContext().getPackageManager();
             ActivityInfo info = pm.getActivityInfo(component, 0);
-            if (!isUsableExactXActivity(info)) {
+            if (!isUsableExactXActivity(info, component)) {
                 return false;
             }
 
@@ -175,16 +206,21 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
             probe.setComponent(component);
             ResolveInfo resolved = pm.resolveActivity(
                     probe, PackageManager.MATCH_DEFAULT_ONLY);
-            return resolved != null && isUsableExactXActivity(resolved.activityInfo);
+            return resolved != null
+                    && isUsableExactXActivity(resolved.activityInfo, component);
         } catch (Throwable ignored) {
             return false;
         }
     }
 
-    private static boolean isUsableExactXActivity(ActivityInfo info) {
+    private static boolean isUsableExactXActivity(
+            ActivityInfo info,
+            ComponentName expected) {
         return info != null
-                && OFFICIAL_TWITTER_PACKAGE.equals(info.packageName)
-                && X_URL_INTERPRETER_ACTIVITY.equals(info.name)
+                && expected != null
+                && expected.getPackageName().equals(info.packageName)
+                && expected.getClassName().equals(info.name)
+                && ExternalAuthRouter.isTwitterProviderPackage(info.packageName)
                 && info.enabled
                 && info.exported
                 && (info.applicationInfo == null || info.applicationInfo.enabled);

@@ -21,15 +21,22 @@ import com.parallaxelite.utils.compat.ParceledListSliceCompat;
 /**
  * Combined external-auth PackageManager compatibility layer.
  *
- * <p>Facebook compatibility is delegated unchanged to
- * {@link IFacebookWebPackageManagerProxy}.</p>
+ * <p>Facebook compatibility behavior is delegated unchanged to
+ * {@link IFacebookWebPackageManagerProxy}. Legacy Twitter Kit probes the exact
+ * {@code com.twitter.android.SingleSignOnActivity}; the SDK reports native SSO
+ * only when that real exported Activity is genuinely present in the installed
+ * X/Twitter build.</p>
  *
- * <p><b>Twitter SSO compatibility:</b> We deliberately do not fabricate the
- * legacy {@code SingleSignOnActivity} because newer X/Twitter builds no longer
- * export it. The Twitter SDK will correctly fall back to the web OAuth flow,
- * which launches the X app's main activity and handles the login.</p>
+ * <p>Current X builds such as 12.22.0 no longer expose the legacy SSO Activity.
+ * They expose an Android AccountAuthenticator service and a URL interpreter
+ * instead. Those supported surfaces are handled by
+ * {@link ITwitterAwareAccountManagerProxy} and the OAuth URL bridge. This class
+ * deliberately does not fabricate or retarget the URL-less Twitter Kit probe to
+ * an unrelated Activity, because doing so makes Twitter Kit believe it has a
+ * {@code ck/cs -> tk/ts} contract that the provider does not implement.</p>
  *
- * <p>No provider result, account, token, cookie, or credential is fabricated.</p>
+ * <p>No provider result, account, OAuth token, cookie, consumer credential or
+ * signature identity is fabricated.</p>
  */
 @ScanClass({IPackageManagerProxy.class})
 public final class IAuthCompatPackageManagerProxy extends IPackageManagerProxy {
@@ -57,46 +64,67 @@ public final class IAuthCompatPackageManagerProxy extends IPackageManagerProxy {
 
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            // Let the existing Facebook logic handle all queries,
-            // including the Twitter SSO probe. Since the real activity is not exported,
-            // the system query will return empty, and the Twitter SDK will fall back
-            // to the web OAuth flow, which works correctly.
-            return existingCompat.hook(who, method, args);
+            Intent intent = findIntent(args);
+            final boolean legacyTwitterProbe = isExactTwitterSsoProbe(intent);
+
+            // Keep the already-shipped Facebook behavior and let its system query
+            // discover the exact legacy Twitter component when an older provider
+            // really still exports it.
+            Object result = existingCompat.hook(who, method, args);
+
+            if (!legacyTwitterProbe) {
+                return result;
+            }
+
+            if (containsUsableTwitterSso(result)) {
+                Log.i(TAG, "legacy SingleSignOnActivity genuinely available"
+                        + processSuffix());
+                return result;
+            }
+
+            Log.w(TAG,
+                    "legacy native SSO unavailable; refusing synthetic successor"
+                            + processSuffix());
+            return emptyResult(method);
         }
     }
 
-    // --------------------------------------------------------------
-    // Helper methods (kept for compatibility, not used in the hook)
-    // --------------------------------------------------------------
     private static Intent findIntent(Object[] args) {
-        if (args == null) return null;
+        if (args == null) {
+            return null;
+        }
         for (Object arg : args) {
-            if (arg instanceof Intent) return (Intent) arg;
+            if (arg instanceof Intent) {
+                return (Intent) arg;
+            }
         }
         return null;
     }
 
-    @SuppressWarnings("unused")
     private static boolean isExactTwitterSsoProbe(Intent intent) {
-        if (intent == null) return false;
+        if (intent == null) {
+            return false;
+        }
         ComponentName component = intent.getComponent();
         return component != null
                 && TWITTER_PACKAGE.equals(component.getPackageName())
                 && TWITTER_SSO_ACTIVITY.equals(component.getClassName());
     }
 
-    @SuppressWarnings("unused")
     static boolean isWireCompatibleTwitterSsoClass(String className) {
         return TWITTER_SSO_ACTIVITY.equals(className);
     }
 
-    @SuppressWarnings("unused")
     private static boolean containsUsableTwitterSso(Object result) {
         List<?> list = extractList(result);
-        if (list == null || list.isEmpty()) return false;
+        if (list == null || list.isEmpty()) {
+            return false;
+        }
 
         for (Object item : list) {
-            if (!(item instanceof ResolveInfo)) continue;
+            if (!(item instanceof ResolveInfo)) {
+                continue;
+            }
             ActivityInfo activityInfo = ((ResolveInfo) item).activityInfo;
             if (activityInfo != null
                     && TWITTER_PACKAGE.equals(activityInfo.packageName)
@@ -112,7 +140,9 @@ public final class IAuthCompatPackageManagerProxy extends IPackageManagerProxy {
     }
 
     private static List<?> extractList(Object result) {
-        if (result instanceof List) return (List<?>) result;
+        if (result instanceof List) {
+            return (List<?>) result;
+        }
         if (ParceledListSliceCompat.isParceledListSlice(result)) {
             try {
                 return BRParceledListSlice.get(result).getList();
@@ -123,7 +153,6 @@ public final class IAuthCompatPackageManagerProxy extends IPackageManagerProxy {
         return null;
     }
 
-    @SuppressWarnings("unused")
     private static Object emptyResult(Method method) {
         List<ResolveInfo> empty = Collections.emptyList();
         if (ParceledListSliceCompat.isReturnParceledListSlice(method)) {
