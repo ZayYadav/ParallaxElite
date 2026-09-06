@@ -16,7 +16,6 @@ import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.compat.auth.ExternalAuthRouter;
 import com.parallaxelite.compat.auth.TwitterKitExternalAppCompat;
 import com.parallaxelite.compat.oauth.TwitterKitExternalAuthBroker;
-import com.parallaxelite.compat.oauth.FacebookCustomTabResultCompat;
 import com.parallaxelite.entity.AppConfig;
 import com.parallaxelite.fake.frameworks.BActivityManager;
 import com.parallaxelite.utils.compat.BundleCompat;
@@ -70,10 +69,6 @@ public class ProxyContentProvider extends ContentProvider {
 
             if (TwitterKitExternalAuthBroker.METHOD_DELIVER_GUEST.equals(method)) {
                 return deliverTwitterKitCallback(extras);
-            }
-
-            if (FacebookCustomTabResultCompat.METHOD_COMPLETE_GUEST.equals(method)) {
-                return deliverFacebookCustomTabCallback(extras);
             }
 
             return super.call(method, arg, extras);
@@ -131,45 +126,6 @@ public class ProxyContentProvider extends ContentProvider {
             return response;
         } catch (Throwable error) {
             Log.w(TAG, "External auth result relay failed: "
-                    + error.getClass().getSimpleName());
-            return response;
-        }
-    }
-
-    private Bundle deliverFacebookCustomTabCallback(@Nullable Bundle extras) {
-        Bundle response = new Bundle();
-        response.putBoolean(FacebookCustomTabResultCompat.EXTRA_DELIVERED, false);
-        if (extras == null) {
-            return response;
-        }
-
-        try {
-            String virtualPackage = extras.getString(
-                    FacebookCustomTabResultCompat.EXTRA_VIRTUAL_PACKAGE);
-            int expectedBpid = extras.getInt(
-                    FacebookCustomTabResultCompat.EXTRA_BPID, -1);
-            int expectedUserId = extras.getInt(
-                    FacebookCustomTabResultCompat.EXTRA_USER_ID, -1);
-            String callbackValue = extras.getString(
-                    FacebookCustomTabResultCompat.EXTRA_CALLBACK_URL);
-
-            if (virtualPackage == null
-                    || !virtualPackage.equals(BActivityThread.getAppPackageName())
-                    || expectedBpid < 0
-                    || expectedBpid != BActivityThread.getAppPid()
-                    || expectedUserId < 0
-                    || expectedUserId != BActivityThread.getUserId()) {
-                Log.w(TAG, "Rejected Facebook CustomTab callback relay: target mismatch");
-                return response;
-            }
-
-            Uri callback = callbackValue == null ? null : Uri.parse(callbackValue);
-            boolean delivered = FacebookCustomTabResultCompat.completeCallback(callback);
-            response.putBoolean(FacebookCustomTabResultCompat.EXTRA_DELIVERED, delivered);
-            Log.i(TAG, "Facebook CustomTab callback accepted=" + delivered);
-            return response;
-        } catch (Throwable error) {
-            Log.w(TAG, "Facebook CustomTab callback relay failed: "
                     + error.getClass().getSimpleName());
             return response;
         }

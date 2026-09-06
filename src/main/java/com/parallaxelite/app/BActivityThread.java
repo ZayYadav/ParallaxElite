@@ -62,7 +62,6 @@ import com.parallaxelite.app.configuration.AppLifecycleCallback;
 import com.parallaxelite.app.dispatcher.AppServiceDispatcher;
 import com.parallaxelite.core.CrashHandler;
 import com.parallaxelite.compat.auth.TwitterKitExternalAppCompat;
-import com.parallaxelite.compat.oauth.FacebookCustomTabResultCompat;
 import com.parallaxelite.core.IBActivityThread;
 import com.parallaxelite.core.VCore;
 import com.parallaxelite.core.VNative;
@@ -397,10 +396,6 @@ public class BActivityThread extends IBActivityThread.Stub {
             // old SingleSignOnActivity, so this preserves Twitter Kit's own token
             // exchange while moving just the authorize UI into the installed X app.
             TwitterKitExternalAppCompat.install(mInitialApplication);
-            // Track Meta's real guest CustomTabMainActivity so a private
-            // Facebook WebView callback can finish through Facebook SDK's own
-            // Activity-result contract instead of reopening a virtual task.
-            FacebookCustomTabResultCompat.install(mInitialApplication);
             List<ProviderInfo> providers;
             installProviders(mInitialApplication, bindData.processName, bindData.providers);
             try {
