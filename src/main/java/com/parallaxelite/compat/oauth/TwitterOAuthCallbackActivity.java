@@ -29,6 +29,16 @@ public final class TwitterOAuthCallbackActivity extends Activity {
     private void handle(Intent intent) {
         Uri callback = intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())
                 ? null : intent.getData();
+
+        // Legacy Twitter Kit 3.x uses twittersdk://callback after its request-token
+        // authorize step. If that flow was handed to the installed X app, relay
+        // the callback into the original guest OAuthActivity first; Twitter Kit
+        // will then perform its own access-token exchange and return BGMI's result.
+        if (TwitterKitExternalAuthBroker.relayCallbackFromHost(callback)) {
+            finish();
+            return;
+        }
+
         TwitterOAuthSessionStore.Claim claim = TwitterOAuthSessionStore.claim(callback);
         if (claim == null) {
             finish();
