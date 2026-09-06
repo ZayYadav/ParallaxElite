@@ -14,6 +14,8 @@ import androidx.annotation.Nullable;
 
 import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.compat.auth.ExternalAuthRouter;
+import com.parallaxelite.compat.auth.TwitterKitExternalAppCompat;
+import com.parallaxelite.compat.oauth.TwitterKitExternalAuthBroker;
 import com.parallaxelite.entity.AppConfig;
 import com.parallaxelite.fake.frameworks.BActivityManager;
 import com.parallaxelite.utils.compat.BundleCompat;
@@ -63,6 +65,10 @@ public class ProxyContentProvider extends ContentProvider {
 
             if (ExternalAuthRouter.METHOD_DELIVER_ACTIVITY_RESULT.equals(method)) {
                 return deliverExternalAuthResult(extras);
+            }
+
+            if (TwitterKitExternalAuthBroker.METHOD_DELIVER_GUEST.equals(method)) {
+                return deliverTwitterKitCallback(extras);
             }
 
             return super.call(method, arg, extras);
@@ -120,6 +126,45 @@ public class ProxyContentProvider extends ContentProvider {
             return response;
         } catch (Throwable error) {
             Log.w(TAG, "External auth result relay failed: "
+                    + error.getClass().getSimpleName());
+            return response;
+        }
+    }
+
+    private Bundle deliverTwitterKitCallback(@Nullable Bundle extras) {
+        Bundle response = new Bundle();
+        response.putBoolean(TwitterKitExternalAuthBroker.EXTRA_DELIVERED, false);
+        if (extras == null) {
+            return response;
+        }
+        try {
+            String virtualPackage = extras.getString(
+                    TwitterKitExternalAuthBroker.EXTRA_VIRTUAL_PACKAGE);
+            int expectedBpid = extras.getInt(
+                    TwitterKitExternalAuthBroker.EXTRA_BPID, -1);
+            int expectedUserId = extras.getInt(
+                    TwitterKitExternalAuthBroker.EXTRA_USER_ID, -1);
+            String callbackValue = extras.getString(
+                    TwitterKitExternalAuthBroker.EXTRA_CALLBACK_URL);
+
+            if (virtualPackage == null
+                    || !virtualPackage.equals(BActivityThread.getAppPackageName())
+                    || expectedBpid < 0
+                    || expectedBpid != BActivityThread.getAppPid()
+                    || expectedUserId < 0
+                    || expectedUserId != BActivityThread.getUserId()) {
+                Log.w(TAG, "Rejected Twitter Kit callback relay: target mismatch");
+                return response;
+            }
+
+            android.net.Uri callback = callbackValue == null
+                    ? null : android.net.Uri.parse(callbackValue);
+            boolean delivered = TwitterKitExternalAppCompat.deliverCallback(callback);
+            response.putBoolean(
+                    TwitterKitExternalAuthBroker.EXTRA_DELIVERED, delivered);
+            return response;
+        } catch (Throwable error) {
+            Log.w(TAG, "Twitter Kit callback relay failed: "
                     + error.getClass().getSimpleName());
             return response;
         }
