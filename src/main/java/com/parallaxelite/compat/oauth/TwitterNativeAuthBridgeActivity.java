@@ -34,12 +34,12 @@ import com.parallaxelite.utils.provider.ProviderCall;
  * bridge accepts the same validated URI without waiting for the exported callback
  * Activity.</p>
  *
- * <p>For a real {@code /i/oauth2/authorize} URL the bridge first prefers the
- * installed provider's verified {@code com.x.android.main.MainActivity}, matching
- * the current X app handoff observed by BGMI. Builds that expose the official
- * {@code com.x.android.deeplink.XUrlInterpreterActivity} instead keep that as a
- * verified fallback. Legacy URL-less Twitter Kit SSO probes are never rewritten
- * to either OAuth2 surface.</p>
+ * <p>For a real {@code /i/oauth2/authorize} URL the bridge targets the verified
+ * {@code com.x.android.deeplink.XUrlInterpreterActivity}, which is the exported
+ * HTTPS VIEW handler in current X builds. X then performs its own internal
+ * transition into {@code com.x.android.main.MainActivity}, where the authorization
+ * UI runs. This preserves X's deep-link parser instead of forcing a launcher-only
+ * Activity to consume a URL directly.</p>
  */
 @Obfuscate
 public final class TwitterNativeAuthBridgeActivity extends Activity {
@@ -49,8 +49,6 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
     private static final long CALLBACK_SETTLE_MS = 1_800L;
 
     private static final String OFFICIAL_TWITTER_PACKAGE = "com.twitter.android";
-    private static final String X_MAIN_ACTIVITY =
-            "com.x.android.main.MainActivity";
     private static final String X_URL_INTERPRETER_ACTIVITY =
             "com.x.android.deeplink.XUrlInterpreterActivity";
 
@@ -138,9 +136,9 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
                 prepared.addCategory(Intent.CATEGORY_DEFAULT);
                 prepared.addCategory(Intent.CATEGORY_BROWSABLE);
                 prepared.setComponent(exact);
-                Log.i(TAG, X_MAIN_ACTIVITY.equals(exact.getClassName())
-                        ? "OAuth2 authorize handoff=verified_x_main_activity"
-                        : "OAuth2 authorize handoff=verified_x_url_interpreter");
+                Log.i(TAG,
+                        "OAuth2 authorize handoff=verified_x_url_interpreter"
+                                + " target_ui=com.x.android.main.MainActivity");
                 return prepared;
             }
             Log.w(TAG,
@@ -156,9 +154,6 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
             String providerPackage,
             Uri authUri) {
         ComponentName[] candidates = new ComponentName[]{
-                new ComponentName(providerPackage, X_MAIN_ACTIVITY),
-                new ComponentName(OFFICIAL_TWITTER_PACKAGE, X_MAIN_ACTIVITY),
-                new ComponentName("com.x.android", X_MAIN_ACTIVITY),
                 new ComponentName(providerPackage, X_URL_INTERPRETER_ACTIVITY),
                 new ComponentName(OFFICIAL_TWITTER_PACKAGE, X_URL_INTERPRETER_ACTIVITY),
                 new ComponentName("com.x.android", X_URL_INTERPRETER_ACTIVITY)

@@ -99,8 +99,6 @@ public final class ExternalAuthRouter {
 
     private static final String GCLOUD_TWITTER_WEB_ACTIVITY =
             "com.itop.twitterwrapper.TwitterWebActivity";
-    private static final String X_MAIN_ACTIVITY =
-            "com.x.android.main.MainActivity";
     private static final String X_URL_INTERPRETER_ACTIVITY =
             "com.x.android.deeplink.XUrlInterpreterActivity";
 
@@ -407,9 +405,10 @@ public final class ExternalAuthRouter {
 
     private static String resolveModernXAuthorizeProvider(
             PackageManager packageManager, Uri authUri) {
+        // Current X 12.22.0 exposes the URL interpreter as the VIEW handler for
+        // twitter.com/x.com links. MainActivity is launcher-only in that manifest;
+        // the provider itself transitions from the interpreter into MainActivity.
         ComponentName[] candidates = new ComponentName[]{
-                new ComponentName("com.twitter.android", X_MAIN_ACTIVITY),
-                new ComponentName("com.x.android", X_MAIN_ACTIVITY),
                 new ComponentName("com.twitter.android", X_URL_INTERPRETER_ACTIVITY),
                 new ComponentName("com.x.android", X_URL_INTERPRETER_ACTIVITY)
         };
