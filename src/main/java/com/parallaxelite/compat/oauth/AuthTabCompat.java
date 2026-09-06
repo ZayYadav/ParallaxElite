@@ -21,8 +21,10 @@ import java.util.Set;
  * only selects a real browser that advertises Auth Tab support and can handle
  * the requested HTTPS URL.
  *
- * Facebook is deliberately excluded from browser provider selection. Its OAuth
- * flow is handled only by FacebookWebViewActivity inside the host process.
+ * Facebook web login is intentionally Chrome-first. When stable Chrome is
+ * installed and advertises Auth Tab support for the exact Facebook URL, the
+ * bridge launches Chrome so the user can reuse the Facebook session already
+ * owned by Chrome. The SDK never reads or copies Chrome/Facebook cookies.
  */
 public final class AuthTabCompat {
     public static final String EXTRA_LAUNCH_AUTH_TAB =
@@ -36,6 +38,7 @@ public final class AuthTabCompat {
             "android.support.customtabs.action.CustomTabsService";
     private static final String CATEGORY_AUTH_TAB =
             "androidx.browser.auth.category.AuthTab";
+    private static final String CHROME_STABLE_PACKAGE = "com.android.chrome";
 
     private AuthTabCompat() {
     }
@@ -46,13 +49,17 @@ public final class AuthTabCompat {
             return null;
         }
 
-        if (FacebookAuthHost.matches(authUri)) {
-            return null;
-        }
-
         PackageManager pm = context.getPackageManager();
         if (pm == null) {
             return null;
+        }
+
+        // Facebook must use the real Chrome profile when possible so an existing
+        // Chrome Facebook login is naturally reused by the browser itself.
+        // This branch is Facebook-only; Twitter/X provider selection is unchanged.
+        if (FacebookAuthHost.matches(authUri)
+                && supportsAuthTabProvider(pm, CHROME_STABLE_PACKAGE, authUri)) {
+            return CHROME_STABLE_PACKAGE;
         }
 
         String defaultBrowser = resolveDefaultBrowser(pm, authUri);
@@ -97,8 +104,7 @@ public final class AuthTabCompat {
     }
 
     public static boolean isSupportedProvider(Context context, String provider, Uri authUri) {
-        if (context == null || provider == null || provider.trim().isEmpty()
-                || FacebookAuthHost.matches(authUri)) {
+        if (context == null || provider == null || provider.trim().isEmpty()) {
             return false;
         }
         String selected = findProvider(context, authUri);
