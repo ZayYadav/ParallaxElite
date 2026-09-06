@@ -48,12 +48,8 @@ public final class FacebookOAuthCallbackActivity extends Activity {
         if (actionOk && schemeOk && hostOk) {
             claim = FacebookOAuthSessionStore.claim(callbackUri);
             if (claim != null) {
-                delivered = VirtualOAuthBridgeActivity.deliverFacebookCallbackToGuestCustomTab(
-                        claim.virtualPackage, claim.userId, claim.bpid, callbackUri);
-                if (!delivered) {
-                    delivered = VirtualOAuthBridgeActivity.dispatchFacebookCallback(
-                            claim.virtualPackage, claim.userId, callbackUri);
-                }
+                delivered = VirtualOAuthBridgeActivity.dispatchFacebookCallback(
+                        claim.virtualPackage, claim.userId, callbackUri);
                 if (delivered) {
                     FacebookOAuthSessionStore.complete(claim.generation);
                 } else {
