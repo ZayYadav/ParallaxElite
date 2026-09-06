@@ -310,13 +310,6 @@
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
         <activity
-            android:name="com.parallaxelite.compat.oauth.FacebookWebViewActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:process=":facebookauth"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
-
-        <activity
             android:name="com.parallaxelite.compat.oauth.TwitterWebViewActivity"
             android:excludeFromRecents="true"
             android:exported="false"
