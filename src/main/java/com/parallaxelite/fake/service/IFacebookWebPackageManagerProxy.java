@@ -26,9 +26,8 @@ import com.parallaxelite.utils.compat.ParceledListSliceCompat;
  * Facebook-login compatibility layer that keeps the existing package-manager
  * virtualization intact while making Facebook native login shortcuts unavailable
  * to the guest. Facebook SDKs treat these unavailable native handlers as "not
- * tried" and continue to their Custom Tab/web handler. ParallaxELite intercepts
- * that HTTPS OAuth launch and opens FacebookWebViewActivity directly; Chrome,
- * Custom Tabs, and installed Facebook-family login Activities are not used.
+ * tried" and continue to their Custom Tab/web handler, which AuthTabCompat then
+ * routes to stable Chrome when supported.
  *
  * Scope is intentionally narrow: only Facebook's platform token service and
  * Facebook login Activities are hidden. Other Facebook features/package metadata
@@ -118,14 +117,6 @@ public final class IFacebookWebPackageManagerProxy extends IPackageManagerProxy 
 
             if (isTwitterSsoDiscoveryIntent(intent)) {
                 return queryOfficialTwitterSsoActivity(who, method, args, intent);
-            }
-
-            if (isFacebookNativeLoginIntent(intent)) {
-                List<ResolveInfo> empty = Collections.emptyList();
-                if (ParceledListSliceCompat.isReturnParceledListSlice(method)) {
-                    return ParceledListSliceCompat.create(empty);
-                }
-                return empty;
             }
 
             if (!isFacebookCustomTabCallbackIntent(intent)) {
@@ -368,12 +359,10 @@ public final class IFacebookWebPackageManagerProxy extends IPackageManagerProxy 
                 ? component.getPackageName() : intent.getPackage();
         String value = lower(packageName);
 
-        // Block every Facebook-family token shortcut used by login. This keeps
-        // authentication on the private WebView path and prevents a silent
-        // installed-app token handoff before web login is attempted.
+        // NativeProtocol.createPlatformServiceIntent() currently probes Katana
+        // and Wakizashi. Restrict the block to those official login providers.
         return "com.facebook.katana".equals(value)
-                || "com.facebook.wakizashi".equals(value)
-                || "com.facebook.lite".equals(value);
+                || "com.facebook.wakizashi".equals(value);
     }
 
     private static boolean isFacebookCustomTabCallbackIntent(Intent intent) {
