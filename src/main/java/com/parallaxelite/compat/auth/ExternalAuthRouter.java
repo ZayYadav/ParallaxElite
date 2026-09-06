@@ -103,9 +103,9 @@ public final class ExternalAuthRouter {
     private static final Set<String> TRUSTED_PROVIDER_PACKAGES = new HashSet<>(Arrays.asList(
             "com.google.android.gms",
             "com.google.android.play.games",
-            // Facebook is deliberately NOT an external provider here. Login is
-            // WebView-only: native Katana/Wakizashi/Lite discovery is suppressed
-            // and Facebook HTTPS OAuth is routed through FacebookWebViewActivity.
+            "com.facebook.katana",
+            "com.facebook.wakizashi",
+            "com.facebook.lite",
             "com.twitter.android",
             "com.twitter.android.lite",
             "com.x.android"
