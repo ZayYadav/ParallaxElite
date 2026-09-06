@@ -1,0 +1,208 @@
+name: Build ELite Loader from ParallaxSDK
+run-name: "ELite Loader • SDK ${{ github.sha }} • ${{ inputs.loader_ref }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      loader_ref:
+        description: ParallaxSDK branch/ref containing the ELite Loader source
+        required: true
+        default: ParallaxELiteLoader
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "parallaxelite-loader-orchestrator-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  build-loader:
+    name: Build signed ELite Loader APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    env:
+      SDK_REPOSITORY: ZayYadav/ParallaxSDK
+      BRIDGE_EVENT: parallaxelite_loader_build
+      BRIDGE_WORKFLOW_NAME: ParallaxElite Signed Loader Bridge
+      DOWNLOAD_DIR: downloaded-loader
+
+    steps:
+      - name: Validate cross-repository Actions token
+        shell: bash
+        env:
+          PARALLAXSDK_ACTIONS_TOKEN: ${{ secrets.PARALLAXSDK_ACTIONS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PARALLAXSDK_ACTIONS_TOKEN:-}" ]; then
+            echo "::error::Missing ParallaxElite secret PARALLAXSDK_ACTIONS_TOKEN."
+            echo "::error::Create a fine-grained GitHub token with access to ZayYadav/ParallaxSDK and Actions Read+Write plus Contents Read, then save it in ParallaxElite Actions secrets as PARALLAXSDK_ACTIONS_TOKEN."
+            exit 1
+          fi
+
+      - name: Create bridge request id
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "request_id=${REQUEST_ID}" >> "${GITHUB_OUTPUT}"
+          echo "REQUEST_ID=${REQUEST_ID}" >> "${GITHUB_ENV}"
+
+      - name: Dispatch signed build in ParallaxSDK
+        shell: bash
+        env:
+          PARALLAXSDK_ACTIONS_TOKEN: ${{ secrets.PARALLAXSDK_ACTIONS_TOKEN }}
+          LOADER_REF: ${{ inputs.loader_ref }}
+          ELITE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          case "${LOADER_REF}" in
+            *[!A-Za-z0-9._/-]*|'') echo "Invalid loader_ref" >&2; exit 1 ;;
+          esac
+
+          PAYLOAD=$(jq -n             --arg event_type "${BRIDGE_EVENT}"             --arg request_id "${REQUEST_ID}"             --arg elite_ref "${ELITE_REF}"             --arg loader_ref "${LOADER_REF}"             '{
+              event_type: $event_type,
+              client_payload: {
+                request_id: $request_id,
+                elite_ref: $elite_ref,
+                loader_ref: $loader_ref
+              }
+            }')
+
+          curl --fail-with-body --silent --show-error             -X POST             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${PARALLAXSDK_ACTIONS_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${SDK_REPOSITORY}/dispatches"             -d "${PAYLOAD}"
+
+      - name: Wait for matching ParallaxSDK bridge run
+        id: bridge
+        shell: bash
+        env:
+          PARALLAXSDK_ACTIONS_TOKEN: ${{ secrets.PARALLAXSDK_ACTIONS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          RUN_ID=""
+          for attempt in $(seq 1 90); do
+            RUNS=$(curl --fail-with-body --silent --show-error               -H "Accept: application/vnd.github+json"               -H "Authorization: Bearer ${PARALLAXSDK_ACTIONS_TOKEN}"               -H "X-GitHub-Api-Version: 2022-11-28"               "https://api.github.com/repos/${SDK_REPOSITORY}/actions/runs?event=repository_dispatch&branch=main&per_page=50")
+
+            RUN_ID=$(printf '%s' "${RUNS}" | jq -r               --arg request_id "${REQUEST_ID}"               --arg workflow_name "${BRIDGE_WORKFLOW_NAME}"               '.workflow_runs[]
+               | select(.name == $workflow_name)
+               | select(.display_title | contains($request_id))
+               | .id' | head -n1)
+
+            if [ -n "${RUN_ID}" ] && [ "${RUN_ID}" != "null" ]; then
+              echo "Found bridge run ${RUN_ID}"
+              break
+            fi
+
+            sleep 5
+          done
+
+          if [ -z "${RUN_ID}" ] || [ "${RUN_ID}" = "null" ]; then
+            echo "::error::Unable to find the matching ParallaxSDK bridge run."
+            exit 1
+          fi
+
+          echo "run_id=${RUN_ID}" >> "${GITHUB_OUTPUT}"
+          echo "BRIDGE_RUN_ID=${RUN_ID}" >> "${GITHUB_ENV}"
+
+      - name: Wait for signed build to finish
+        shell: bash
+        env:
+          PARALLAXSDK_ACTIONS_TOKEN: ${{ secrets.PARALLAXSDK_ACTIONS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 360); do
+            RUN=$(curl --fail-with-body --silent --show-error               -H "Accept: application/vnd.github+json"               -H "Authorization: Bearer ${PARALLAXSDK_ACTIONS_TOKEN}"               -H "X-GitHub-Api-Version: 2022-11-28"               "https://api.github.com/repos/${SDK_REPOSITORY}/actions/runs/${BRIDGE_RUN_ID}")
+
+            STATUS=$(printf '%s' "${RUN}" | jq -r '.status')
+            CONCLUSION=$(printf '%s' "${RUN}" | jq -r '.conclusion // ""')
+            HTML_URL=$(printf '%s' "${RUN}" | jq -r '.html_url')
+
+            echo "Bridge status=${STATUS} conclusion=${CONCLUSION}"
+
+            if [ "${STATUS}" = "completed" ]; then
+              if [ "${CONCLUSION}" != "success" ]; then
+                echo "::error::ParallaxSDK signed build failed: ${HTML_URL}"
+                exit 1
+              fi
+              echo "Bridge build succeeded: ${HTML_URL}"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Timed out waiting for ParallaxSDK signed build."
+          exit 1
+
+      - name: Download signed APK from ParallaxSDK run
+        shell: bash
+        env:
+          PARALLAXSDK_ACTIONS_TOKEN: ${{ secrets.PARALLAXSDK_ACTIONS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ARTIFACT_NAME="ParallaxELiteLoader-signed-${REQUEST_ID}"
+          ARTIFACTS=$(curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${PARALLAXSDK_ACTIONS_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${SDK_REPOSITORY}/actions/runs/${BRIDGE_RUN_ID}/artifacts?per_page=100")
+
+          ARTIFACT_ID=$(printf '%s' "${ARTIFACTS}" | jq -r             --arg name "${ARTIFACT_NAME}"             '.artifacts[] | select(.name == $name and .expired == false) | .id'             | head -n1)
+
+          if [ -z "${ARTIFACT_ID}" ] || [ "${ARTIFACT_ID}" = "null" ]; then
+            echo "::error::Signed loader artifact was not found in bridge run ${BRIDGE_RUN_ID}."
+            exit 1
+          fi
+
+          mkdir -p "${DOWNLOAD_DIR}"
+          curl --fail-with-body --silent --show-error --location             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${PARALLAXSDK_ACTIONS_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${SDK_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip"             -o bridge-artifact.zip
+
+          unzip -tq bridge-artifact.zip
+          unzip -q bridge-artifact.zip -d "${DOWNLOAD_DIR}"
+
+      - name: Verify downloaded signed loader
+        shell: bash
+        env:
+          ELITE_REF: ${{ github.sha }}
+          LOADER_REF: ${{ inputs.loader_ref }}
+        run: |
+          set -euo pipefail
+
+          APK=$(find "${DOWNLOAD_DIR}" -type f -name '*.apk' -print -quit)
+          INFO=$(find "${DOWNLOAD_DIR}" -type f -name 'BUILD_INFO.txt' -print -quit)
+          test -n "${APK}"
+          test -n "${INFO}"
+
+          unzip -tq "${APK}"
+
+          grep -qx "request_id=${REQUEST_ID}" "${INFO}"
+          grep -qx "elite_ref=${ELITE_REF}" "${INFO}"
+          grep -qx "loader_ref=${LOADER_REF}" "${INFO}"
+
+          EXPECTED_SHA=$(awk '/ParallaxELiteLoader-.*\.apk$/ {print $1; exit}' "${INFO}")
+          ACTUAL_SHA=$(sha256sum "${APK}" | awk '{print $1}')
+
+          if [ -z "${EXPECTED_SHA}" ] || [ "${EXPECTED_SHA}" != "${ACTUAL_SHA}" ]; then
+            echo "::error::Downloaded APK SHA-256 does not match bridge metadata."
+            exit 1
+          fi
+
+          {
+            echo "elite_actions_run=${GITHUB_RUN_ID}"
+            echo "parallaxsdk_bridge_run=${BRIDGE_RUN_ID}"
+            echo "apk_sha256=${ACTUAL_SHA}"
+          } >> "${INFO}"
+
+          cat "${INFO}"
+
+      - name: Publish APK in ParallaxElite Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ParallaxELiteLoader-release-apk
+          path: |
+            ${{ env.DOWNLOAD_DIR }}/*.apk
+            ${{ env.DOWNLOAD_DIR }}/BUILD_INFO.txt
+          if-no-files-found: error
+          retention-days: 30
