@@ -84,6 +84,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                 ExternalAuthRouter.EXTRA_MANUAL_RESULT_RELAY, false);
         resultBpid = launchIntent == null ? -1
                 : launchIntent.getIntExtra(ExternalAuthRouter.EXTRA_BPID, -1);
+        if (resultBpid < 0 && launchIntent != null) {
+            resultBpid = launchIntent.getIntExtra(
+                    FacebookCustomTabResultCompat.EXTRA_BPID, -1);
+        }
 
         if (externalAuthMode) {
             virtualPackage = launchIntent.getStringExtra(
@@ -155,7 +159,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         if (savedInstanceState == null) {
             if (facebookFlow) {
                 FacebookOAuthSessionStore.begin(
-                        authUri, expectedRedirectUri, virtualPackage, userId);
+                        authUri, expectedRedirectUri, virtualPackage, userId, resultBpid);
                 facebookDiagnostic("session_started", RESULT_CANCELED, null, null, false);
                 launchFacebookWebView(authUri, expectedRedirectUri);
             } else if (twitterFlow) {
@@ -381,8 +385,24 @@ public final class VirtualOAuthBridgeActivity extends Activity {
             if (!delivered && claim != null
                     && virtualPackage.equals(claim.virtualPackage)
                     && userId == claim.userId) {
-                delivered = dispatchFacebookCallback(
-                        claim.virtualPackage, claim.userId, callbackUri);
+                // Primary path: finish Meta's already-waiting guest
+                // CustomTabMainActivity with RESULT_OK + extra_url. This is the
+                // exact Activity-result contract consumed by
+                // CustomTabLoginMethodHandler (requestCode 1), so Meta keeps
+                // ownership of state validation and code/token exchange.
+                delivered = deliverFacebookCallbackToGuestCustomTab(
+                        claim.virtualPackage,
+                        claim.userId,
+                        claim.bpid,
+                        callbackUri);
+
+                // Compatibility fallback for older/modified SDKs where the live
+                // CustomTabMainActivity cannot be observed in the guest process.
+                if (!delivered) {
+                    delivered = dispatchFacebookCallback(
+                            claim.virtualPackage, claim.userId, callbackUri);
+                }
+
                 if (delivered) {
                     FacebookOAuthSessionStore.complete(claim.generation);
                 } else {
@@ -566,10 +586,57 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                 && redirectResolvesToVirtualPackage(callbackUri);
     }
 
+    static boolean deliverFacebookCallbackToGuestCustomTab(
+            String targetPackage, int targetUserId, int targetBpid, Uri callbackUri) {
+        if (callbackUri == null
+                || targetPackage == null
+                || targetPackage.trim().isEmpty()
+                || targetUserId < 0
+                || targetBpid < 0
+                || targetBpid > 24) {
+            return false;
+        }
+
+        try {
+            Bundle relay = new Bundle();
+            relay.putString(
+                    FacebookCustomTabResultCompat.EXTRA_CALLBACK_URL,
+                    callbackUri.toString());
+            relay.putString(
+                    FacebookCustomTabResultCompat.EXTRA_VIRTUAL_PACKAGE,
+                    targetPackage);
+            relay.putInt(
+                    FacebookCustomTabResultCompat.EXTRA_USER_ID,
+                    targetUserId);
+            relay.putInt(
+                    FacebookCustomTabResultCompat.EXTRA_BPID,
+                    targetBpid);
+
+            Bundle response = ProviderCall.callSafely(
+                    ProxyManifest.getProxyAuthorities(targetBpid),
+                    FacebookCustomTabResultCompat.METHOD_COMPLETE_GUEST,
+                    null,
+                    relay);
+            boolean delivered = response != null
+                    && response.getBoolean(
+                    FacebookCustomTabResultCompat.EXTRA_DELIVERED, false);
+            Log.i(TAG, "facebook stage=guest_custom_tab_result delivered=" + delivered);
+            return delivered;
+        } catch (Throwable ignored) {
+            Log.i(TAG, "facebook stage=guest_custom_tab_result delivered=false");
+            return false;
+        }
+    }
+
     private boolean dispatchToVirtualPackage(Uri callbackUri) {
-        if (isFacebookHost(authUri)
-                && dispatchFacebookCallback(virtualPackage, userId, callbackUri)) {
-            return true;
+        if (isFacebookHost(authUri)) {
+            if (deliverFacebookCallbackToGuestCustomTab(
+                    virtualPackage, userId, resultBpid, callbackUri)) {
+                return true;
+            }
+            if (dispatchFacebookCallback(virtualPackage, userId, callbackUri)) {
+                return true;
+            }
         }
 
         try {
