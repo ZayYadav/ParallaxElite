@@ -20,6 +20,7 @@ import org.lsposed.lsparanoid.Obfuscate;
 import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.compat.oauth.TwitterNativeAuthBridgeActivity;
+import com.parallaxelite.compat.oauth.TwitterNativeProviderResolver;
 import com.parallaxelite.compat.oauth.TwitterOAuthSessionStore;
 import com.parallaxelite.compat.oauth.TwitterOAuthUrl;
 import com.parallaxelite.compat.oauth.VirtualOAuthBridgeActivity;
@@ -99,8 +100,6 @@ public final class ExternalAuthRouter {
 
     private static final String GCLOUD_TWITTER_WEB_ACTIVITY =
             "com.itop.twitterwrapper.TwitterWebActivity";
-    private static final String X_URL_INTERPRETER_ACTIVITY =
-            "com.x.android.deeplink.XUrlInterpreterActivity";
 
     private static final Set<String> TRUSTED_PROVIDER_PACKAGES = new HashSet<>(Arrays.asList(
             "com.google.android.gms",
@@ -366,100 +365,14 @@ public final class ExternalAuthRouter {
 
     private static String resolveNativeTwitterProvider(Intent source) {
         if (source == null || ParallaxELiteInstaller.getContext() == null) return null;
-        try {
-            PackageManager packageManager =
-                    ParallaxELiteInstaller.getContext().getPackageManager();
-            Uri authUri = source.getData();
-
-            if (authUri != null
-                    && TwitterOAuthUrl.isModernOAuth2Authorize(authUri.toString())) {
-                String exactPackage =
-                        resolveModernXAuthorizeProvider(packageManager, authUri);
-                if (exactPackage != null) {
-                    return exactPackage;
-                }
-            }
-
-            for (String packageName : TWITTER_NATIVE_PROVIDER_PACKAGES) {
-                Intent candidate = new Intent(source);
-                candidate.setComponent(null);
-                candidate.setPackage(packageName);
-                ResolveInfo resolved = packageManager.resolveActivity(
-                        candidate, PackageManager.MATCH_DEFAULT_ONLY);
-                if (resolved == null || resolved.activityInfo == null) {
-                    continue;
-                }
-                if (packageName.equals(resolved.activityInfo.packageName)
-                        && isTwitterProviderPackage(packageName)
-                        && resolved.activityInfo.enabled
-                        && resolved.activityInfo.exported
-                        && (resolved.activityInfo.applicationInfo == null
-                        || resolved.activityInfo.applicationInfo.enabled)) {
-                    return packageName;
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return null;
-    }
-
-    private static String resolveModernXAuthorizeProvider(
-            PackageManager packageManager, Uri authUri) {
-        // Current X 12.22.0 exposes the URL interpreter as the VIEW handler for
-        // twitter.com/x.com links. MainActivity is launcher-only in that manifest;
-        // the provider itself transitions from the interpreter into MainActivity.
-        ComponentName[] candidates = new ComponentName[]{
-                new ComponentName("com.twitter.android", X_URL_INTERPRETER_ACTIVITY),
-                new ComponentName("com.x.android", X_URL_INTERPRETER_ACTIVITY)
-        };
-        for (ComponentName candidate : candidates) {
-            if (isLaunchableModernTwitterActivity(packageManager, candidate, authUri)) {
-                return candidate.getPackageName();
+        PackageManager pm = ParallaxELiteInstaller.getContext().getPackageManager();
+        for (String provider : TWITTER_NATIVE_PROVIDER_PACKAGES) {
+            if (TwitterNativeProviderResolver.resolve(pm, source.getData(), provider,
+                    ParallaxELiteInstaller.getHostPkg()) != null) {
+                return provider;
             }
         }
         return null;
-    }
-
-    private static boolean isLaunchableModernTwitterActivity(
-            PackageManager packageManager,
-            ComponentName component,
-            Uri authUri) {
-        try {
-            if (packageManager == null || component == null || authUri == null
-                    || !isTwitterProviderPackage(component.getPackageName())) {
-                return false;
-            }
-            android.content.pm.ActivityInfo info =
-                    packageManager.getActivityInfo(component, 0);
-            if (info == null
-                    || !component.getPackageName().equals(info.packageName)
-                    || !component.getClassName().equals(info.name)
-                    || !info.enabled
-                    || !info.exported
-                    || (info.applicationInfo != null && !info.applicationInfo.enabled)) {
-                return false;
-            }
-            if (info.permission != null && !info.permission.trim().isEmpty()
-                    && packageManager.checkPermission(
-                    info.permission, ParallaxELiteInstaller.getHostPkg())
-                    != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-            Intent probe = new Intent(Intent.ACTION_VIEW, authUri);
-            probe.addCategory(Intent.CATEGORY_DEFAULT);
-            probe.addCategory(Intent.CATEGORY_BROWSABLE);
-            probe.setComponent(component);
-            ResolveInfo resolved = packageManager.resolveActivity(
-                    probe, PackageManager.MATCH_DEFAULT_ONLY);
-            return resolved != null
-                    && resolved.activityInfo != null
-                    && component.getPackageName().equals(resolved.activityInfo.packageName)
-                    && component.getClassName().equals(resolved.activityInfo.name)
-                    && resolved.activityInfo.enabled
-                    && resolved.activityInfo.exported;
-        } catch (Throwable ignored) {
-            return false;
-        }
     }
 
     private static Intent extractGCloudTwitterAuthIntent(Intent source) {

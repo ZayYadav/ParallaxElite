@@ -104,7 +104,8 @@ public final class VirtualOAuthRouter {
         // browser cannot return arbitrary virtual custom schemes to this SDK.
         String authProvider = AuthTabCompat.findProvider(
                 ParallaxELiteInstaller.getContext(), authUri);
-        if (authProvider == null || authProvider.trim().isEmpty()) {
+        if ((authProvider == null || authProvider.trim().isEmpty())
+                && !FacebookAuthHost.matches(authUri)) {
             return null;
         }
 
@@ -116,7 +117,9 @@ public final class VirtualOAuthRouter {
         bridge.putExtra(EXTRA_REDIRECT_URI, redirectUri.toString());
         bridge.putExtra(EXTRA_VIRTUAL_PACKAGE, virtualPackage);
         bridge.putExtra(EXTRA_USER_ID, userId);
-        bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider);
+        // Keep unsupported Facebook logins in the host bridge so it can explain
+        // the requirement and cancel, rather than fall through to a shared tab.
+        bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider == null ? "" : authProvider);
         bridge.addFlags(source.getFlags() & (
                 Intent.FLAG_ACTIVITY_NEW_TASK
                         | Intent.FLAG_ACTIVITY_CLEAR_TOP

@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.widget.Toast;
 
 import java.util.Locale;
 
@@ -117,8 +118,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         Uri redirectUri = safeCustomRedirectUri(redirectUriValue);
         if (authUri == null || !VirtualOAuthRouter.isTrustedAuthUri(authUri)
                 || redirectUri == null || virtualPackage == null
-                || virtualPackage.trim().isEmpty() || userId < 0
-                || authProvider == null || authProvider.trim().isEmpty()) {
+                || virtualPackage.trim().isEmpty() || userId < 0) {
             if (resultBridgeMode) {
                 completeBridgeResult(RESULT_CANCELED, null);
             } else {
@@ -131,6 +131,11 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         facebookFlow = isFacebookHost(authUri);
         twitterFlow = isTwitterHost(authUri);
         legacyTwitterFlow = twitterFlow && hasQueryParameter(authUri, "oauth_token");
+        if (facebookFlow && !AuthTabCompat.isSupportedProvider(this, authProvider, authUri)) {
+            Toast.makeText(this,
+                    "Private Facebook login needs an updated browser with private Auth Tab support.",
+                    Toast.LENGTH_LONG).show();
+        }
         if (!redirectResolvesToVirtualPackage(redirectUri)
                 || !AuthTabCompat.isSupportedProvider(this, authProvider, authUri)) {
             diagnostic("setup_rejected", false, false, false, false, false);
@@ -251,15 +256,8 @@ public final class VirtualOAuthBridgeActivity extends Activity {
             // followed by launch(..., redirectScheme). Keeping it dependency-free
             // avoids changing the SDK's AndroidX surface while remaining compatible
             // with browsers implementing AndroidX Browser Auth Tab 1.9+.
-            Intent authIntent = new Intent(Intent.ACTION_VIEW, authUri);
-            authIntent.addCategory(Intent.CATEGORY_BROWSABLE);
-            authIntent.setPackage(provider);
-            authIntent.putExtra(AuthTabCompat.EXTRA_LAUNCH_AUTH_TAB, true);
-            authIntent.putExtra(AuthTabCompat.EXTRA_REDIRECT_SCHEME, redirectScheme);
-
-            Bundle session = new Bundle();
-            session.putBinder(AuthTabCompat.EXTRA_CUSTOM_TABS_SESSION, null);
-            authIntent.putExtras(session);
+            Intent authIntent = AuthTabCompat.createLaunchIntent(
+                    this, authUri, redirectScheme, provider);
 
             startActivityForResult(authIntent, REQUEST_AUTH_TAB);
         } catch (Throwable ignored) {

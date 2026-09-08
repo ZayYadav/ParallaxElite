@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.net.Uri;
+import android.os.Bundle;
 
 import java.util.HashSet;
 import java.util.List;
@@ -21,10 +22,8 @@ import java.util.Set;
  * only selects a real browser that advertises Auth Tab support and can handle
  * the requested HTTPS URL.
  *
- * Facebook web login is intentionally Chrome-first. When stable Chrome is
- * installed and advertises Auth Tab support for the exact Facebook URL, the
- * bridge launches Chrome so the user can reuse the Facebook session already
- * owned by Chrome. The SDK never reads or copies Chrome/Facebook cookies.
+ * Facebook requires an ephemeral Auth Tab so each login starts separately from
+ * the browser's saved session. Unsupported browsers must not receive that flow.
  */
 public final class AuthTabCompat {
     public static final String EXTRA_LAUNCH_AUTH_TAB =
@@ -33,11 +32,15 @@ public final class AuthTabCompat {
             "androidx.browser.auth.extra.REDIRECT_SCHEME";
     public static final String EXTRA_CUSTOM_TABS_SESSION =
             "android.support.customtabs.extra.SESSION";
+    public static final String EXTRA_ENABLE_EPHEMERAL_BROWSING =
+            "androidx.browser.customtabs.extra.ENABLE_EPHEMERAL_BROWSING";
 
     private static final String ACTION_CUSTOM_TABS_CONNECTION =
             "android.support.customtabs.action.CustomTabsService";
     private static final String CATEGORY_AUTH_TAB =
             "androidx.browser.auth.category.AuthTab";
+    private static final String CATEGORY_EPHEMERAL_BROWSING =
+            "androidx.browser.customtabs.category.EphemeralBrowsing";
     private static final String CHROME_STABLE_PACKAGE = "com.android.chrome";
 
     private AuthTabCompat() {
@@ -54,9 +57,7 @@ public final class AuthTabCompat {
             return null;
         }
 
-        // Facebook must use the real Chrome profile when possible so an existing
-        // Chrome Facebook login is naturally reused by the browser itself.
-        // This branch is Facebook-only; Twitter/X provider selection is unchanged.
+        // Prefer Chrome only when it advertises both required capabilities.
         if (FacebookAuthHost.matches(authUri)
                 && supportsAuthTabProvider(pm, CHROME_STABLE_PACKAGE, authUri)) {
             return CHROME_STABLE_PACKAGE;
@@ -77,10 +78,8 @@ public final class AuthTabCompat {
             for (ResolveInfo info : services) {
                 ServiceInfo serviceInfo = info == null ? null : info.serviceInfo;
                 IntentFilter filter = info == null ? null : info.filter;
-                if (serviceInfo == null || serviceInfo.packageName == null
-                        || !seen.add(serviceInfo.packageName)
-                        || filter == null
-                        || !filter.hasCategory(CATEGORY_AUTH_TAB)) {
+                if (!eligibleService(serviceInfo, filter, authUri)
+                        || !seen.add(serviceInfo.packageName)) {
                     continue;
                 }
 
@@ -138,10 +137,8 @@ public final class AuthTabCompat {
             for (ResolveInfo info : services) {
                 IntentFilter filter = info == null ? null : info.filter;
                 ServiceInfo serviceInfo = info == null ? null : info.serviceInfo;
-                if (serviceInfo != null
+                if (eligibleService(serviceInfo, filter, authUri)
                         && provider.equals(serviceInfo.packageName)
-                        && filter != null
-                        && filter.hasCategory(CATEGORY_AUTH_TAB)
                         && canHandleAuthUrl(pm, provider, authUri)) {
                     return true;
                 }
@@ -149,6 +146,35 @@ public final class AuthTabCompat {
         } catch (Throwable ignored) {
         }
         return false;
+    }
+
+    private static boolean eligibleService(ServiceInfo info, IntentFilter filter, Uri uri) {
+        return info != null && info.packageName != null && info.enabled && info.exported
+                && (info.applicationInfo == null || info.applicationInfo.enabled)
+                && filter != null && filter.hasCategory(CATEGORY_AUTH_TAB)
+                && (!FacebookAuthHost.matches(uri)
+                    || filter.hasCategory(CATEGORY_EPHEMERAL_BROWSING));
+    }
+
+    /** Public AndroidX wire contract; callback validation remains in the bridge. */
+    public static Intent createLaunchIntent(Context context, Uri authUri,
+            String redirectScheme, String provider) {
+        // Recheck immediately before launch, including after Activity recreation.
+        if (redirectScheme == null || redirectScheme.isEmpty()
+                || !isSupportedProvider(context, provider, authUri)) {
+            throw new IllegalStateException("Required Auth Tab capability unavailable");
+        }
+        Intent intent = authViewIntent(authUri);
+        intent.setPackage(provider);
+        intent.putExtra(EXTRA_LAUNCH_AUTH_TAB, true);
+        intent.putExtra(EXTRA_REDIRECT_SCHEME, redirectScheme);
+        if (FacebookAuthHost.matches(authUri)) {
+            intent.putExtra(EXTRA_ENABLE_EPHEMERAL_BROWSING, true);
+        }
+        Bundle session = new Bundle();
+        session.putBinder(EXTRA_CUSTOM_TABS_SESSION, null);
+        intent.putExtras(session);
+        return intent;
     }
 
     private static String resolveDefaultBrowser(PackageManager pm, Uri authUri) {
