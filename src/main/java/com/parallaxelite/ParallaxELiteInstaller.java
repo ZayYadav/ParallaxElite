@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.MetaCore.RemoteManager;
 import android.graphics.Color;
 import android.net.Uri;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import me.weishu.reflection.Reflection;
 
 import java.io.File;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,6 +83,7 @@ public class ParallaxELiteInstaller extends ClientConfiguration {
 
     private static final ParallaxELiteInstaller sParallaxELiteInstaller = new ParallaxELiteInstaller();
     private static Context sContext;
+    private static volatile String sHostSigningSha256 = "";
     private ProcessType mProcessType;
     private final Map<String, IBinder> mServices = new HashMap<>();
     private Thread.UncaughtExceptionHandler mExceptionHandler;
@@ -119,6 +122,54 @@ public class ParallaxELiteInstaller extends ClientConfiguration {
         return sContext;
     }
 
+    /**
+     * Returns the host APK's current signing certificate SHA-256 captured before
+     * ParallaxElite installs PackageManager hooks.
+     */
+    public static String getHostSigningSha256() {
+        return sHostSigningSha256;
+    }
+
+    private static String captureHostSigningSha256(Context context) {
+        if (context == null) {
+            throw new IllegalArgumentException("Context is null");
+        }
+        try {
+            PackageManager pm = context.getPackageManager();
+            String packageName = context.getPackageName();
+            PackageInfo info;
+            Signature[] signatures;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info = pm.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES);
+                if (info.signingInfo == null) {
+                    throw new SecurityException("Host signing info unavailable");
+                }
+                // Current APK signers are authoritative. Signing history may contain
+                // retired certificates after a legitimate key rotation.
+                signatures = info.signingInfo.getApkContentsSigners();
+                if ((signatures == null || signatures.length == 0)
+                        && !info.signingInfo.hasMultipleSigners()) {
+                    signatures = info.signingInfo.getSigningCertificateHistory();
+                }
+            } else {
+                info = pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+                signatures = info.signatures;
+            }
+            if (signatures == null || signatures.length == 0 || signatures[0] == null) {
+                throw new SecurityException("Host signing certificate unavailable");
+            }
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(signatures[0].toByteArray());
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                hex.append(String.format(java.util.Locale.ROOT, "%02X", value & 0xFF));
+            }
+            return hex.toString();
+        } catch (Throwable throwable) {
+            throw new SecurityException("Unable to capture host signing certificate", throwable);
+        }
+    }
+
     public AppConfig getAppConfig() {
         return appConfig;
     }
@@ -147,7 +198,10 @@ public class ParallaxELiteInstaller extends ClientConfiguration {
         if (clientConfiguration == null) {
             throw new IllegalArgumentException("ClientConfiguration is null!");
         }
-        
+
+        // Capture the real host signing identity before Reflection/PackageManager hooks.
+        sHostSigningSha256 = captureHostSigningSha256(context);
+
         Reflection.unseal(context);
         sContext = context;
         mClientConfiguration = clientConfiguration;
