@@ -9,6 +9,7 @@ import android.util.Base64
 import org.json.JSONObject
 import org.lsposed.lsparanoid.Obfuscate
 import com.parallaxelite.BuildConfig
+import com.parallaxelite.ParallaxELiteInstaller
 import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.nio.charset.StandardCharsets
@@ -277,6 +278,17 @@ internal class SecureSdkApiClient(private val context: Context) {
         "parallax_" + "e" + "lite_device_proof_v3"
 
     internal fun appSigningCertificateSha256(packageName: String): String {
+        // For the host package, use the signing identity captured during
+        // Application.attachBaseContext(), before ParallaxElite installs PM hooks.
+        if (packageName == context.packageName) {
+            val captured = ParallaxELiteInstaller.getHostSigningSha256()
+                .trim()
+                .uppercase(Locale.ROOT)
+            if (captured.matches(Regex("^[A-F0-9]{64}$"))) {
+                return captured
+            }
+        }
+
         val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             context.packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
         } else {
@@ -287,12 +299,10 @@ internal class SecureSdkApiClient(private val context: Context) {
         val signature = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val signingInfo = packageInfo.signingInfo
                 ?: throw SecurityException("Signing info unavailable")
-            val signers = if (signingInfo.hasMultipleSigners()) {
-                signingInfo.apkContentsSigners
-            } else {
-                signingInfo.signingCertificateHistory
-            }
-            signers.firstOrNull()
+            // apkContentsSigners is the current signer set. History can include
+            // retired certs and must not become the active panel identity.
+            signingInfo.apkContentsSigners?.firstOrNull()
+                ?: signingInfo.signingCertificateHistory?.firstOrNull()
         } else {
             @Suppress("DEPRECATION")
             packageInfo.signatures?.firstOrNull()
