@@ -1,10 +1,7 @@
 package com.parallaxelite.compat.oauth;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,7 +12,6 @@ import android.util.Log;
 
 import org.lsposed.lsparanoid.Obfuscate;
 
-import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.compat.auth.ExternalAuthRouter;
 import com.parallaxelite.fake.frameworks.BPackageManager;
 import com.parallaxelite.proxy.ProxyManifest;
@@ -34,12 +30,8 @@ import com.parallaxelite.utils.provider.ProviderCall;
  * bridge accepts the same validated URI without waiting for the exported callback
  * Activity.</p>
  *
- * <p>For a real {@code /i/oauth2/authorize} URL the bridge targets the verified
- * {@code com.x.android.deeplink.XUrlInterpreterActivity}, which is the exported
- * HTTPS VIEW handler in current X builds. X then performs its own internal
- * transition into {@code com.x.android.main.MainActivity}, where the authorization
- * UI runs. This preserves X's deep-link parser instead of forcing a launcher-only
- * Activity to consume a URL directly.</p>
+ * <p>Only the installed provider's declared exported handler for the exact OAuth
+ * URL is eligible. No provider-internal activity name is assumed.</p>
  */
 @Obfuscate
 public final class TwitterNativeAuthBridgeActivity extends Activity {
@@ -48,9 +40,6 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
     private static final int REQUEST_TWITTER_WEB = 0x5855;
     private static final long CALLBACK_SETTLE_MS = 1_800L;
 
-    private static final String OFFICIAL_TWITTER_PACKAGE = "com.twitter.android";
-    private static final String X_URL_INTERPRETER_ACTIVITY =
-            "com.x.android.deeplink.XUrlInterpreterActivity";
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -144,109 +133,17 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         super.onDestroy();
     }
 
-    /**
-     * Use the manifest-verified X URL interpreter for modern OAuth2 links. Older
-     * Twitter/X builds and OAuth1 links keep the existing package-only resolver.
-     */
     private Intent prepareProviderIntent(
-            Intent original,
-            String providerPackage,
-            Uri authUri) {
-        Intent prepared = new Intent(original);
+            Intent original, String providerPackage, Uri authUri) {
+        Intent prepared = TwitterNativeProviderResolver.resolve(
+                getPackageManager(), authUri, providerPackage, getPackageName());
+        if (prepared == null) {
+            throw new IllegalStateException("Native OAuth handler unavailable");
+        }
+        prepared.addFlags(original.getFlags() & Intent.FLAG_ACTIVITY_NO_ANIMATION);
         prepared.putExtra(ExternalAuthRouter.EXTRA_DIRECT_PROVIDER_DISPATCH, true);
-
-        if (TwitterOAuthUrl.isModernOAuth2Authorize(authUri.toString())) {
-            ComponentName exact =
-                    findPreferredModernAuthorizeComponent(providerPackage, authUri);
-            if (exact != null) {
-                prepared.setAction(Intent.ACTION_VIEW);
-                prepared.setData(authUri);
-                prepared.addCategory(Intent.CATEGORY_DEFAULT);
-                prepared.addCategory(Intent.CATEGORY_BROWSABLE);
-                prepared.setComponent(exact);
-                AuthDiagnostics.info(TAG,
-                        "OAuth2 authorize handoff=verified_x_url_interpreter"
-                                + " target_ui=com.x.android.main.MainActivity");
-                return prepared;
-            }
-            Log.w(TAG,
-                    "OAuth2 authorize handoff=package_fallback reason=component_unavailable");
-        }
-
-        prepared.setComponent(null);
-        prepared.setPackage(providerPackage);
+        AuthDiagnostics.info(TAG, "native stage=declared_oauth_handler_launch");
         return prepared;
-    }
-
-    private ComponentName findPreferredModernAuthorizeComponent(
-            String providerPackage,
-            Uri authUri) {
-        ComponentName[] candidates = new ComponentName[]{
-                new ComponentName(providerPackage, X_URL_INTERPRETER_ACTIVITY),
-                new ComponentName(OFFICIAL_TWITTER_PACKAGE, X_URL_INTERPRETER_ACTIVITY),
-                new ComponentName("com.x.android", X_URL_INTERPRETER_ACTIVITY)
-        };
-        for (ComponentName candidate : candidates) {
-            if (candidate == null
-                    || !ExternalAuthRouter.isTwitterProviderPackage(
-                    candidate.getPackageName())) {
-                continue;
-            }
-            if (isLaunchableExactXAuthorizeComponent(candidate, authUri)) {
-                return candidate;
-            }
-        }
-        return null;
-    }
-
-    private boolean isLaunchableExactXAuthorizeComponent(
-            ComponentName component,
-            Uri authUri) {
-        try {
-            if (component == null || authUri == null
-                    || ParallaxELiteInstaller.getContext() == null
-                    || !ExternalAuthRouter.isTwitterProviderPackage(
-                    component.getPackageName())) {
-                return false;
-            }
-
-            PackageManager pm = ParallaxELiteInstaller.getContext().getPackageManager();
-            ActivityInfo info = pm.getActivityInfo(component, 0);
-            if (!isUsableExactXActivity(info, component)) {
-                return false;
-            }
-
-            String permission = info.permission;
-            if (permission != null && !permission.trim().isEmpty()
-                    && pm.checkPermission(permission, getPackageName())
-                    != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-
-            Intent probe = new Intent(Intent.ACTION_VIEW, authUri);
-            probe.addCategory(Intent.CATEGORY_DEFAULT);
-            probe.addCategory(Intent.CATEGORY_BROWSABLE);
-            probe.setComponent(component);
-            ResolveInfo resolved = pm.resolveActivity(
-                    probe, PackageManager.MATCH_DEFAULT_ONLY);
-            return resolved != null
-                    && isUsableExactXActivity(resolved.activityInfo, component);
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static boolean isUsableExactXActivity(
-            ActivityInfo info,
-            ComponentName expected) {
-        return info != null
-                && expected != null
-                && expected.getPackageName().equals(info.packageName)
-                && expected.getClassName().equals(info.name)
-                && ExternalAuthRouter.isTwitterProviderPackage(info.packageName)
-                && info.enabled
-                && info.exported
-                && (info.applicationInfo == null || info.applicationInfo.enabled);
     }
 
     @Override
@@ -278,11 +175,15 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
             return;
         }
 
-        if (requestCode != REQUEST_TWITTER_APP || completionPending) {
+        if (requestCode != REQUEST_TWITTER_APP) {
             return;
         }
 
         if (handleOAuthResult(data)) {
+            return;
+        }
+
+        if (completionPending || fallbackLaunched) {
             return;
         }
 
