@@ -164,7 +164,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
                 prepared.addCategory(Intent.CATEGORY_DEFAULT);
                 prepared.addCategory(Intent.CATEGORY_BROWSABLE);
                 prepared.setComponent(exact);
-                Log.i(TAG,
+                AuthDiagnostics.info(TAG,
                         "OAuth2 authorize handoff=verified_x_url_interpreter"
                                 + " target_ui=com.x.android.main.MainActivity");
                 return prepared;
@@ -304,7 +304,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
                 finish();
                 return;
             }
-            Log.i(TAG, "native callback unavailable; opening private WebView fallback");
+            AuthDiagnostics.info(TAG, "native callback unavailable; opening private WebView fallback");
             launchWebFallback();
         }, CALLBACK_SETTLE_MS);
     }
