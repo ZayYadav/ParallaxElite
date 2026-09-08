@@ -45,8 +45,6 @@ import black.android.app.BRActivityManagerNative;
 import black.android.app.BRActivityThread;
 import black.android.app.BRActivityThreadActivityClientRecord;
 import black.android.app.BRActivityThreadAppBindData;
-import black.android.app.BRActivityThreadNMR1;
-import black.android.app.BRActivityThreadQ;
 import black.android.app.BRContextImpl;
 import black.android.app.BRLoadedApk;
 import black.android.app.BRService;
@@ -80,6 +78,7 @@ import com.parallaxelite.utils.Slog;
 import com.parallaxelite.utils.compat.ActivityManagerCompat;
 import com.parallaxelite.utils.compat.BuildCompat;
 import com.parallaxelite.utils.compat.ContextCompat;
+import com.parallaxelite.utils.compat.NewIntentCompat;
 import com.parallaxelite.utils.compat.ScopedClassLoader;
 import com.parallaxelite.utils.compat.StrictModeCompat;
 import com.parallaxelite.utils.compat.WebViewProcessCompat;
@@ -564,14 +563,23 @@ public class BActivityThread extends IBActivityThread.Stub {
     @Override
     public void handleNewIntent(final IBinder token, final Intent intent) {
         mH.post(() -> {
-            Intent newIntent = BuildCompat.isLollipop_MR1() ? BRReferrerIntent.get()._new(intent, ParallaxELiteInstaller.getHostPkg()) : intent;
-            Object mainThread = ParallaxELiteInstaller.mainThread();
-            if (BRActivityThread.get(mainThread)._check_performNewIntents(null, null) != null) {
-                BRActivityThread.get(mainThread).performNewIntents(token, Collections.singletonList(newIntent));
-            } else if (BRActivityThreadNMR1.get(mainThread)._check_performNewIntents(null, null, false) != null) {
-                BRActivityThreadNMR1.get(mainThread).performNewIntents(token, Collections.singletonList(newIntent), true);
-            } else if (BRActivityThreadQ.get(mainThread)._check_handleNewIntent(null, null) != null) {
-                BRActivityThreadQ.get(mainThread).handleNewIntent(token, Collections.singletonList(newIntent));
+            try {
+                Object mainThread = ParallaxELiteInstaller.mainThread();
+                Map<IBinder, Object> activities = BRActivityThread.get(mainThread).mActivities();
+                Object record = activities == null ? null : activities.get(token);
+                if (record == null || intent == null) {
+                    Log.w(TAG, "new_intent stage=target_unavailable");
+                    return;
+                }
+                Intent newIntent = BuildCompat.isLollipop_MR1()
+                        ? BRReferrerIntent.get()._new(intent, ParallaxELiteInstaller.getHostPkg()) : intent;
+                if (!NewIntentCompat.deliver(mainThread, record, token, newIntent)) {
+                    Log.w(TAG, "new_intent stage=unsupported_signature");
+                }
+            } catch (ReflectiveOperationException | RuntimeException error) {
+                // Do not retry after invocation: the callback may have already
+                // run. Exception messages can contain callback data.
+                Log.w(TAG, "new_intent stage=delivery_failed");
             }
         });
     }

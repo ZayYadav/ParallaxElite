@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.util.Log;
 
 import java.util.Locale;
 
@@ -619,18 +618,18 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                 callback.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
                         | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 BActivityManager.get().startActivity(callback, targetUserId);
-                Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=true");
+                AuthDiagnostics.info(TAG, "facebook stage=custom_tab_activity_handoff delivered=true");
                 return true;
             } catch (Throwable ignored) {
-                Log.i(TAG, "facebook stage=custom_tab_activity_handoff delivered=false");
+                AuthDiagnostics.info(TAG, "facebook stage=custom_tab_activity_handoff delivered=false");
             }
         } else {
-            Log.i(TAG, "facebook stage=custom_tab_activity_unavailable delivered=false");
+            AuthDiagnostics.info(TAG, "facebook stage=custom_tab_activity_unavailable delivered=false");
         }
 
         if (!virtualActivityExists(
                 targetPackage, FACEBOOK_CUSTOM_TAB_MAIN_ACTIVITY, targetUserId)) {
-            Log.i(TAG, "facebook stage=custom_tab_main_unavailable delivered=false");
+            AuthDiagnostics.info(TAG, "facebook stage=custom_tab_main_unavailable delivered=false");
             return false;
         }
 
@@ -643,10 +642,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
             callback.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
                     | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             BActivityManager.get().startActivity(callback, targetUserId);
-            Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=true");
+            AuthDiagnostics.info(TAG, "facebook stage=custom_tab_main_handoff delivered=true");
             return true;
         } catch (Throwable ignored) {
-            Log.i(TAG, "facebook stage=custom_tab_main_handoff delivered=false");
+            AuthDiagnostics.info(TAG, "facebook stage=custom_tab_main_handoff delivered=false");
             return false;
         }
     }
@@ -692,7 +691,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         if (!twitterFlow) {
             return;
         }
-        Log.i(TAG, "twitter stage=" + stage
+        AuthDiagnostics.info(TAG, "twitter stage=" + stage
                 + " oauth1=" + legacyTwitterFlow
                 + " token=" + hasToken
                 + " verifier=" + hasVerifier
@@ -722,7 +721,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         boolean virtualTarget = validated && redirectResolvesToVirtualPackage(callbackUri);
         boolean fallbackCompleted = FacebookOAuthSessionStore.isCompleted(facebookGeneration);
 
-        Log.i(TAG, "facebook stage=" + stage
+        AuthDiagnostics.info(TAG, "facebook stage=" + stage
                 + " result=" + resultCode
                 + " data=" + (data != null)
                 + " uri=" + uriPresent
@@ -730,6 +729,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                 + " authority_match=" + authorityMatch
                 + " validated=" + validated
                 + " virtual_target=" + virtualTarget
+                + AuthDiagnostics.facebookResultShape(callbackUri)
                 + " fallback_completed=" + fallbackCompleted
                 + " delivered=" + delivered);
     }
@@ -737,7 +737,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
     private static void authDiagnostic(String stage, String provider, boolean delivered) {
         String safeProvider = ExternalAuthRouter.isTrustedProviderPackage(provider)
                 ? provider : "unknown";
-        Log.i(AUTH_TAG, "native stage=" + stage
+        AuthDiagnostics.info(AUTH_TAG, "native stage=" + stage
                 + " provider=" + safeProvider
                 + " delivered=" + delivered);
     }

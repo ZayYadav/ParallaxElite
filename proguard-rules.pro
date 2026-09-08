@@ -440,6 +440,7 @@
 -keep class com.parallaxelite.fake.service.IAuthCompatPackageManagerProxy { *; }
 -keep class com.parallaxelite.fake.service.ITwitterAwareAccountManagerProxy { *; }
 -keep class com.parallaxelite.utils.compat.IntentRedirectCompat { *; }
+-keep class com.parallaxelite.utils.compat.NewIntentCompat { *; }
 -keep class com.parallaxelite.utils.compat.VirtualPackageMetadataCompat { *; }
 -keep class com.parallaxelite.utils.compat.VirtualPermissionCompat { *; }
 

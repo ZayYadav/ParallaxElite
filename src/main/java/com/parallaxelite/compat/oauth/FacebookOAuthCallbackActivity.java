@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 
 import java.util.Locale;
 
@@ -58,10 +57,11 @@ public final class FacebookOAuthCallbackActivity extends Activity {
             }
         }
 
-        Log.i(TAG, "facebook stage=host_callback"
+        AuthDiagnostics.info(TAG, "facebook stage=host_callback"
                 + " action=" + actionOk
                 + " scheme=" + schemeOk
                 + " host=" + hostOk
+                + AuthDiagnostics.facebookResultShape(callbackUri)
                 + " session=" + (claim != null)
                 + " delivered=" + delivered);
         finish();
