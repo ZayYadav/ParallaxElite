@@ -2,115 +2,132 @@ package com.parallaxelite.compat.oauth;
 
 import android.net.Uri;
 
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-/**
- * Validates browser-controlled OAuth callback URIs before they cross back into
- * a virtual application. Provider-added result parameters are allowed, while
- * the registered callback target, fixed parameters, and OAuth state must match.
- */
+/** Validates callback ownership before returning provider results to a virtual app. */
 public final class OAuthCallbackValidator {
+    private static final int MAX_URL_LENGTH = 16_384;
+
     private OAuthCallbackValidator() {
     }
 
     public static boolean matches(Uri authUri, Uri expectedRedirect, Uri callback) {
-        if (authUri == null || expectedRedirect == null || callback == null) {
-            return false;
-        }
-        if (!lower(expectedRedirect.getScheme()).equals(lower(callback.getScheme()))) {
-            return false;
-        }
-        if (!lower(expectedRedirect.getEncodedAuthority())
-                .equals(lower(callback.getEncodedAuthority()))) {
-            return false;
-        }
-        if (!same(expectedRedirect.getEncodedPath(), callback.getEncodedPath())) {
-            return false;
-        }
-        if (expectedRedirect.getFragment() != null
-                && !same(expectedRedirect.getEncodedFragment(), callback.getEncodedFragment())) {
-            return false;
-        }
-
         try {
-            String expectedState = authUri.getQueryParameter("state");
-            if (expectedState != null && !expectedState.isEmpty()) {
-                String callbackState = callback.getQueryParameter("state");
+            if (!validUri(authUri) || !validUri(expectedRedirect) || !validUri(callback)) {
+                return false;
+            }
+            if (!lower(expectedRedirect.getScheme()).equals(lower(callback.getScheme()))
+                    || !lower(expectedRedirect.getEncodedAuthority())
+                    .equals(lower(callback.getEncodedAuthority()))
+                    || !same(expectedRedirect.getEncodedPath(), callback.getEncodedPath())) {
+                return false;
+            }
+            if (expectedRedirect.getFragment() != null
+                    && !same(expectedRedirect.getEncodedFragment(), callback.getEncodedFragment())) {
+                return false;
+            }
 
-                // Meta/Facebook token and hybrid Custom Tab flows may return
-                // provider result parameters in the fragment. Meta's own Android
-                // SDK merges query + fragment before validating state. Permit
-                // that fallback only for a trusted Facebook auth host so the
-                // existing Twitter/X and other-provider validation semantics stay
-                // exactly query-only.
-                if ((callbackState == null || callbackState.isEmpty())
-                        && FacebookAuthHost.matches(authUri)) {
-                    callbackState = getFragmentParameter(callback, "state");
+            Map<String, List<String>> auth = parameters(authUri.getEncodedQuery());
+            Map<String, List<String>> query = parameters(callback.getEncodedQuery());
+            Map<String, List<String>> fixed = parameters(expectedRedirect.getEncodedQuery());
+            String expectedState = single(auth, "state");
+            String queryState = single(query, "state");
+            String callbackState = queryState;
+
+            // Meta's SDK form-decodes and merges query + fragment. Validate both
+            // locations so that the SDK cannot consume a different state later.
+            if (FacebookAuthHost.matches(authUri)) {
+                String fragmentState = single(parameters(callback.getEncodedFragment()), "state");
+                if (queryState != null && fragmentState != null
+                        && !queryState.equals(fragmentState)) {
+                    return false;
                 }
+                if (fragmentState != null) {
+                    callbackState = fragmentState;
+                }
+            }
+            if (expectedState != null
+                    && (expectedState.isEmpty() || !expectedState.equals(callbackState))) {
+                return false;
+            }
 
-                if (!expectedState.equals(callbackState)) {
+            String requestToken = single(auth, "oauth_token");
+            if (requestToken != null && !matchesRequestToken(requestToken, query)) {
+                return false;
+            }
+            for (Map.Entry<String, List<String>> entry : fixed.entrySet()) {
+                if (!entry.getValue().equals(query.get(entry.getKey()))) {
                     return false;
                 }
             }
-
-            for (String name : expectedRedirect.getQueryParameterNames()) {
-                if (!expectedRedirect.getQueryParameters(name)
-                        .equals(callback.getQueryParameters(name))) {
-                    return false;
-                }
-            }
-        } catch (Throwable ignored) {
+            return true;
+        } catch (Exception ignored) {
+            // Malformed input and ambiguous validation fields fail closed.
             return false;
         }
-        return true;
     }
 
-    /**
-     * Reads only the named validation field from the fragment. OAuth result
-     * values are not logged or persisted.
-     */
-    private static String getFragmentParameter(Uri uri, String name) {
-        if (uri == null || name == null || name.isEmpty()) {
-            return null;
+    private static boolean matchesRequestToken(String requestToken,
+            Map<String, List<String>> query) {
+        if (requestToken.isEmpty()) {
+            return false;
         }
+        String token = single(query, "oauth_token");
+        String denied = single(query, "denied");
+        String verifier = single(query, "oauth_verifier");
+        String error = single(query, "error");
+        if (denied != null) {
+            return requestToken.equals(denied) && token == null && verifier == null;
+        }
+        if (!requestToken.equals(token)) {
+            return false;
+        }
+        return (error != null && !error.isEmpty())
+                || (verifier != null && !verifier.isEmpty());
+    }
 
-        String fragment;
-        try {
-            fragment = uri.getEncodedFragment();
-        } catch (Throwable ignored) {
-            return null;
-        }
-        if (fragment == null || fragment.isEmpty()) {
-            return null;
-        }
+    private static boolean validUri(Uri uri) {
+        return uri != null && uri.isHierarchical() && uri.getScheme() != null
+                && uri.toString().length() <= MAX_URL_LENGTH && uri.getUserInfo() == null;
+    }
 
-        String[] pairs = fragment.split("&");
-        for (String pair : pairs) {
-            if (pair == null || pair.isEmpty()) {
+    private static Map<String, List<String>> parameters(String encoded) throws Exception {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        if (encoded == null || encoded.isEmpty()) {
+            return result;
+        }
+        for (String pair : encoded.split("&")) {
+            if (pair.isEmpty()) {
                 continue;
             }
             int separator = pair.indexOf('=');
-            String encodedKey = separator >= 0 ? pair.substring(0, separator) : pair;
-            String key;
-            try {
-                key = Uri.decode(encodedKey);
-            } catch (Throwable ignored) {
-                continue;
+            String key = URLDecoder.decode(separator < 0 ? pair : pair.substring(0, separator), "UTF-8");
+            String value = separator < 0 ? ""
+                    : URLDecoder.decode(pair.substring(separator + 1), "UTF-8");
+            List<String> values = result.get(key);
+            if (values == null) {
+                values = new ArrayList<>();
+                result.put(key, values);
             }
-            if (!name.equals(key)) {
-                continue;
-            }
-
-            if (separator < 0 || separator + 1 >= pair.length()) {
-                return "";
-            }
-            try {
-                return Uri.decode(pair.substring(separator + 1));
-            } catch (Throwable ignored) {
-                return null;
-            }
+            values.add(value);
         }
-        return null;
+        return result;
+    }
+
+    private static String single(Map<String, List<String>> parameters, String name) {
+        List<String> values = parameters.get(name);
+        if (values == null) {
+            return null;
+        }
+        if (values.size() != 1) {
+            throw new IllegalArgumentException("Ambiguous OAuth validation field");
+        }
+        return values.get(0);
     }
 
     private static String lower(String value) {

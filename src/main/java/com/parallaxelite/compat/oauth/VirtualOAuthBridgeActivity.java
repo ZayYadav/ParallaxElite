@@ -69,6 +69,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
     private boolean externalAuthMode;
     private boolean manualResultRelay;
     private boolean facebookResultPending;
+    private long facebookGeneration;
+    private int facebookPendingStage;
+    private static final String STATE_FACEBOOK_GENERATION = "facebook_generation";
+    private static final String STATE_FACEBOOK_PENDING = "facebook_pending";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -150,12 +154,46 @@ public final class VirtualOAuthBridgeActivity extends Activity {
 
         if (savedInstanceState == null) {
             if (facebookFlow) {
-                FacebookOAuthSessionStore.begin(
+                facebookGeneration = FacebookOAuthSessionStore.begin(
                         authUri, expectedRedirectUri, virtualPackage, userId);
+                if (facebookGeneration <= 0L) {
+                    failFacebookResult();
+                    return;
+                }
                 facebookDiagnostic("session_started", RESULT_CANCELED, null, null, false);
             }
             launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
+        } else if (facebookFlow) {
+            facebookGeneration = savedInstanceState.getLong(STATE_FACEBOOK_GENERATION, 0L);
+            if (!FacebookOAuthSessionStore.contains(facebookGeneration)) {
+                // Process death loses the in-memory ownership proof. Ask the
+                // caller to retry instead of leaving an orphaned login screen.
+                failFacebookResult();
+                return;
+            }
+            int pendingStage = savedInstanceState.getInt(STATE_FACEBOOK_PENDING, 0);
+            if (pendingStage == 2) {
+                settleFacebookSuccess();
+            } else if (pendingStage == 1) {
+                waitForFacebookFallback();
+            }
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putLong(STATE_FACEBOOK_GENERATION, facebookGeneration);
+        outState.putInt(STATE_FACEBOOK_PENDING, facebookPendingStage);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onDestroy() {
+        mainHandler.removeCallbacksAndMessages(null);
+        if (facebookFlow && isFinishing()) {
+            FacebookOAuthSessionStore.clear(facebookGeneration);
+        }
+        super.onDestroy();
     }
 
     private void launchExternalProvider(Intent bridgeIntent) {
@@ -229,7 +267,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
             diagnostic("launch_failed", false, false, false, false, false);
             facebookDiagnostic("launch_failed", RESULT_CANCELED, null, null, false);
             if (facebookFlow) {
-                FacebookOAuthSessionStore.clear(virtualPackage, userId);
+                FacebookOAuthSessionStore.clear(facebookGeneration);
             }
             if (resultBridgeMode) {
                 completeBridgeResult(RESULT_CANCELED, null);
@@ -324,9 +362,8 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         // Facebook only, so accept that shape without weakening other providers.
         if (callbackUri != null && matchesExpectedCallback(callbackUri)) {
             FacebookOAuthSessionStore.Claim claim =
-                    FacebookOAuthSessionStore.claim(callbackUri);
-            boolean alreadyDelivered = FacebookOAuthSessionStore.isCompleted(
-                    virtualPackage, userId);
+                    FacebookOAuthSessionStore.claim(callbackUri, facebookGeneration);
+            boolean alreadyDelivered = FacebookOAuthSessionStore.isCompleted(facebookGeneration);
             boolean delivered = alreadyDelivered;
 
             if (!delivered && claim != null
@@ -366,19 +403,23 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         // bounded window to validate and relay that callback before propagating a
         // cancellation to the virtual Facebook SDK.
         facebookDiagnostic("auth_not_completed", resultCode, data, callbackUri, false);
+        waitForFacebookFallback();
+    }
+
+    private void waitForFacebookFallback() {
         facebookResultPending = true;
+        facebookPendingStage = 1;
         mainHandler.postDelayed(() -> {
             facebookResultPending = false;
             if (isFinishing() || isDestroyed()) {
                 return;
             }
-            boolean delivered = FacebookOAuthSessionStore.isCompleted(
-                    virtualPackage, userId);
+            boolean delivered = FacebookOAuthSessionStore.isCompleted(facebookGeneration);
             facebookDiagnostic(
                     delivered ? "fallback_completed" : "fallback_timeout",
-                    resultCode,
-                    data,
-                    callbackUri,
+                    RESULT_CANCELED,
+                    null,
+                    null,
                     delivered);
             if (delivered) {
                 settleFacebookSuccess();
@@ -390,9 +431,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
 
     private void settleFacebookSuccess() {
         facebookResultPending = true;
+        facebookPendingStage = 2;
         mainHandler.postDelayed(() -> {
             facebookResultPending = false;
-            FacebookOAuthSessionStore.clear(virtualPackage, userId);
+            FacebookOAuthSessionStore.clear(facebookGeneration);
             if (!isFinishing() && !isDestroyed()) {
                 finish();
             }
@@ -401,7 +443,8 @@ public final class VirtualOAuthBridgeActivity extends Activity {
 
     private void failFacebookResult() {
         facebookResultPending = false;
-        FacebookOAuthSessionStore.clear(virtualPackage, userId);
+        facebookPendingStage = 0;
+        FacebookOAuthSessionStore.clear(facebookGeneration);
         if (resultBridgeMode) {
             completeBridgeResult(RESULT_CANCELED, null);
         } else {
@@ -677,8 +720,7 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         boolean validated = uriPresent
                 && OAuthCallbackValidator.matches(authUri, expectedRedirectUri, callbackUri);
         boolean virtualTarget = validated && redirectResolvesToVirtualPackage(callbackUri);
-        boolean fallbackCompleted = FacebookOAuthSessionStore.isCompleted(
-                virtualPackage, userId);
+        boolean fallbackCompleted = FacebookOAuthSessionStore.isCompleted(facebookGeneration);
 
         Log.i(TAG, "facebook stage=" + stage
                 + " result=" + resultCode
