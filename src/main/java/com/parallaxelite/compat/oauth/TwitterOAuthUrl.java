@@ -18,7 +18,9 @@ public final class TwitterOAuthUrl {
 
         try {
             URI uri = URI.create(value);
-            if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getUserInfo() != null) {
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getUserInfo() != null
+                    || (uri.getPort() != -1 && uri.getPort() != 443)
+                    || uri.getRawFragment() != null) {
                 return false;
             }
 
@@ -33,8 +35,7 @@ public final class TwitterOAuthUrl {
                 return false;
             }
 
-            String path = uri.getPath();
-            return path != null && OAUTH2_AUTHORIZE_PATH.equalsIgnoreCase(path);
+            return OAUTH2_AUTHORIZE_PATH.equals(uri.getRawPath());
         } catch (IllegalArgumentException ignored) {
             return false;
         }

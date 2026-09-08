@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 import com.parallaxelite.compat.auth.ExternalAuthRouter;
 import com.parallaxelite.proxy.ProxyManifest;
@@ -44,7 +45,9 @@ public final class TwitterOAuthSessionStore {
     ));
 
     private static final List<Session> SESSIONS = new ArrayList<>();
-    private static long nextGeneration = 1L;
+    // Saved Activity state must not identify an unrelated session after process restart.
+    private static long nextGeneration = (UUID.randomUUID().getMostSignificantBits()
+            & Long.MAX_VALUE) | 1L;
 
     private TwitterOAuthSessionStore() {
     }
@@ -109,6 +112,10 @@ public final class TwitterOAuthSessionStore {
     }
 
     static Claim claim(Uri callbackUri) {
+        return claim(callbackUri, -1L);
+    }
+
+    static Claim claim(Uri callbackUri, long generation) {
         if (callbackUri == null || !isHostCaptureSupported(callbackUri)
                 || !hasOAuthResult(callbackUri)) {
             return null;
@@ -118,6 +125,9 @@ public final class TwitterOAuthSessionStore {
             purgeLocked(now);
             Session matched = null;
             for (Session session : SESSIONS) {
+                if (generation != -1L && session.generation != generation) {
+                    continue;
+                }
                 if (session.claimed || session.completed) {
                     continue;
                 }
@@ -218,6 +228,30 @@ public final class TwitterOAuthSessionStore {
         }
         synchronized (LOCK) {
             removeTargetLocked(virtualPackage, userId);
+        }
+    }
+
+    static boolean contains(long generation) {
+        synchronized (LOCK) {
+            purgeLocked(SystemClock.elapsedRealtime());
+            return findGenerationLocked(generation) != null;
+        }
+    }
+
+    static boolean isCompleted(long generation) {
+        synchronized (LOCK) {
+            purgeLocked(SystemClock.elapsedRealtime());
+            Session session = findGenerationLocked(generation);
+            return session != null && session.completed;
+        }
+    }
+
+    static void clear(long generation) {
+        synchronized (LOCK) {
+            Session session = findGenerationLocked(generation);
+            if (session != null) {
+                SESSIONS.remove(session);
+            }
         }
     }
 

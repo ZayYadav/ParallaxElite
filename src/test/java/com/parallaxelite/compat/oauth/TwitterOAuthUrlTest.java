@@ -33,4 +33,18 @@ public class TwitterOAuthUrlTest {
         assertFalse(TwitterOAuthUrl.isModernOAuth2Authorize(
                 "https://x.com/i/oauth/authorize?oauth_token=test"));
     }
+
+    @Test
+    public void requiresCanonicalEndpointAndHttpsPort() {
+        assertTrue(TwitterOAuthUrl.isModernOAuth2Authorize(
+                "https://x.com:443/i/oauth2/authorize" + QUERY));
+        for (String url : new String[] {
+                "https://x.com:8443/i/oauth2/authorize",
+                "https://x.com/I/OAUTH2/AUTHORIZE",
+                "https://x.com/i/oauth2/%61uthorize",
+                "https://x.com/i/oauth2/authorize#fragment"
+        }) {
+            assertFalse(TwitterOAuthUrl.isModernOAuth2Authorize(url));
+        }
+    }
 }

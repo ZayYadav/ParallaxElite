@@ -6,6 +6,7 @@ import android.os.SystemClock;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Short-lived in-process state for Facebook browser OAuth callbacks.
@@ -21,7 +22,9 @@ final class FacebookOAuthSessionStore {
     private static final int MAX_SESSIONS = 4;
 
     private static final List<Session> SESSIONS = new ArrayList<>();
-    private static long nextGeneration = 1L;
+    // Saved Activity state must not identify an unrelated session after process restart.
+    private static long nextGeneration = (UUID.randomUUID().getMostSignificantBits()
+            & Long.MAX_VALUE) | 1L;
 
     private FacebookOAuthSessionStore() {
     }
@@ -54,6 +57,10 @@ final class FacebookOAuthSessionStore {
     }
 
     static Claim claim(Uri callbackUri) {
+        return claim(callbackUri, -1L);
+    }
+
+    static Claim claim(Uri callbackUri, long generation) {
         if (callbackUri == null) {
             return null;
         }
@@ -63,6 +70,9 @@ final class FacebookOAuthSessionStore {
 
             Session matched = null;
             for (Session session : SESSIONS) {
+                if (generation != -1L && session.generation != generation) {
+                    continue;
+                }
                 if (session.claimed || session.completed) {
                     continue;
                 }
@@ -128,6 +138,30 @@ final class FacebookOAuthSessionStore {
         }
         synchronized (LOCK) {
             removeTargetLocked(virtualPackage, userId);
+        }
+    }
+
+    static boolean contains(long generation) {
+        synchronized (LOCK) {
+            purgeLocked(SystemClock.elapsedRealtime());
+            return findGenerationLocked(generation) != null;
+        }
+    }
+
+    static boolean isCompleted(long generation) {
+        synchronized (LOCK) {
+            purgeLocked(SystemClock.elapsedRealtime());
+            Session session = findGenerationLocked(generation);
+            return session != null && session.completed;
+        }
+    }
+
+    static void clear(long generation) {
+        synchronized (LOCK) {
+            Session session = findGenerationLocked(generation);
+            if (session != null) {
+                SESSIONS.remove(session);
+            }
         }
     }
 

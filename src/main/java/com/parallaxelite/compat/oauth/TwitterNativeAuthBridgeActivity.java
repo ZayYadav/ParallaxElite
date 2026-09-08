@@ -56,7 +56,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
 
     private String virtualPackage;
     private int userId = -1;
-    private long generation = -1L;
+    private long generation;
     private Uri authUri;
     private Uri expectedRedirectUri;
     private boolean providerLaunched;
@@ -112,8 +112,36 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
                 launchWebFallback();
             }
         } else {
-            providerLaunched = true;
+            generation = savedInstanceState.getLong("twitter_generation", 0L);
+            providerLaunched = savedInstanceState.getBoolean("twitter_provider_launched", false);
+            fallbackLaunched = savedInstanceState.getBoolean("twitter_fallback_launched", false);
+            if (!TwitterOAuthSessionStore.contains(generation)) {
+                relayCancellation();
+                finish();
+                return;
+            }
+            if (savedInstanceState.getBoolean("twitter_completion_pending", false)) {
+                waitForNativeCallback();
+            }
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putLong("twitter_generation", generation);
+        outState.putBoolean("twitter_provider_launched", providerLaunched);
+        outState.putBoolean("twitter_fallback_launched", fallbackLaunched);
+        outState.putBoolean("twitter_completion_pending", completionPending);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onDestroy() {
+        mainHandler.removeCallbacksAndMessages(null);
+        if (isFinishing()) {
+            TwitterOAuthSessionStore.clear(generation);
+        }
+        super.onDestroy();
     }
 
     /**
@@ -227,8 +255,8 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         if (!providerLaunched || completionPending || virtualPackage == null || userId < 0) {
             return;
         }
-        if (TwitterOAuthSessionStore.isCompleted(virtualPackage, userId)) {
-            TwitterOAuthSessionStore.clear(virtualPackage, userId);
+        if (TwitterOAuthSessionStore.isCompleted(generation)) {
+            TwitterOAuthSessionStore.clear(generation);
             finish();
         }
     }
@@ -236,12 +264,15 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (isFinishing()) {
+            return;
+        }
 
         if (requestCode == REQUEST_TWITTER_WEB) {
             if (handleOAuthResult(data)) {
                 return;
             }
-            TwitterOAuthSessionStore.clear(virtualPackage, userId);
+            TwitterOAuthSessionStore.clear(generation);
             relayCancellation();
             finish();
             return;
@@ -258,14 +289,18 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         // Several Twitter/X builds finish or cancel their provider Activity just
         // before Android dispatches the custom-scheme callback. Give that callback
         // a short bounded window; only then fall back to our in-app WebView.
+        waitForNativeCallback();
+    }
+
+    private void waitForNativeCallback() {
         completionPending = true;
         mainHandler.postDelayed(() -> {
             completionPending = false;
             if (isFinishing() || isDestroyed()) {
                 return;
             }
-            if (TwitterOAuthSessionStore.isCompleted(virtualPackage, userId)) {
-                TwitterOAuthSessionStore.clear(virtualPackage, userId);
+            if (TwitterOAuthSessionStore.isCompleted(generation)) {
+                TwitterOAuthSessionStore.clear(generation);
                 finish();
                 return;
             }
@@ -280,7 +315,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
             return false;
         }
 
-        TwitterOAuthSessionStore.Claim claim = TwitterOAuthSessionStore.claim(callback);
+        TwitterOAuthSessionStore.Claim claim = TwitterOAuthSessionStore.claim(callback, generation);
         if (claim == null
                 || virtualPackage == null
                 || !virtualPackage.equals(claim.virtualPackage)
@@ -297,7 +332,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         }
 
         TwitterOAuthSessionStore.complete(claim.generation);
-        TwitterOAuthSessionStore.clear(virtualPackage, userId);
+        TwitterOAuthSessionStore.clear(generation);
         finish();
         return true;
     }
@@ -308,7 +343,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
         }
         if (!ExternalAuthRouter.isTrustedTwitterOAuthUri(authUri)
                 || !TwitterOAuthSessionStore.isHostCaptureSupported(expectedRedirectUri)) {
-            TwitterOAuthSessionStore.clear(virtualPackage, userId);
+            TwitterOAuthSessionStore.clear(generation);
             relayCancellation();
             finish();
             return;
@@ -323,7 +358,7 @@ public final class TwitterNativeAuthBridgeActivity extends Activity {
                     expectedRedirectUri.toString());
             startActivityForResult(web, REQUEST_TWITTER_WEB);
         } catch (Throwable ignored) {
-            TwitterOAuthSessionStore.clear(virtualPackage, userId);
+            TwitterOAuthSessionStore.clear(generation);
             relayCancellation();
             finish();
         }
