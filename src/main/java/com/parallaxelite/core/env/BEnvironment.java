@@ -19,24 +19,51 @@ import org.lsposed.lsparanoid.Obfuscate;
 
 @Obfuscate
 public class BEnvironment {
-   
-  //  private static final File sExternalVirtualRoot = ParallaxELiteInstaller.getContext().getExternalFilesDir("ParallaxELiteCore");
-    private static final File sVBoxRoot = ParallaxELiteInstaller.getContext().getFilesDir();
-  //  private static final File sVBoxRoot = new File(ParallaxELiteInstaller.getContext().getCacheDir().getParent(), "ParallaxELiteCore");
-    private static final File sExternalVBoxRoot = Environment.getExternalStorageDirectory();
-    
-	public static void load() {
-		FileUtils.mkdirs(sVBoxRoot);
-        FileUtils.mkdirs(sExternalVBoxRoot);
-		FileUtils.mkdirs(getSystemDir());
-		FileUtils.mkdirs(getCacheDir());
-		FileUtils.mkdirs(getProcDir());
-	}
-    
+
+    // Resolve the private root lazily. ContentProviders may be created very early in
+    // process startup, so dereferencing the installer Context from a static field can
+    // permanently poison this class with ExceptionInInitializerError.
+    private static volatile File sVBoxRoot;
+
+    private static File requireVBoxRoot() {
+        File root = sVBoxRoot;
+        if (root != null) {
+            return root;
+        }
+        synchronized (BEnvironment.class) {
+            root = sVBoxRoot;
+            if (root == null) {
+                Context context = ParallaxELiteInstaller.getContext();
+                if (context == null) {
+                    throw new IllegalStateException("ParallaxELite context is not attached yet");
+                }
+                root = context.getFilesDir();
+                if (root == null) {
+                    throw new IllegalStateException("Application files directory is unavailable");
+                }
+                sVBoxRoot = root;
+            }
+        }
+        return root;
+    }
+
+    private static File getExternalVBoxRoot() {
+        return Environment.getExternalStorageDirectory();
+    }
+
+    public static void load() {
+        FileUtils.mkdirs(getVBoxRoot());
+        // The platform external-storage root already exists and may be read-only under
+        // scoped storage. Do not attempt to mkdir the root itself.
+        FileUtils.mkdirs(getSystemDir());
+        FileUtils.mkdirs(getCacheDir());
+        FileUtils.mkdirs(getProcDir());
+    }
+
     public static File getVBoxRoot() {
-		return sVBoxRoot;
-	}
-    
+        return requireVBoxRoot();
+    }
+
     public static ArrayList<String> getAllDex(String packageName) {
         File appDir = getAppDir(packageName);
         ArrayList<String> result = new ArrayList<>();
@@ -67,35 +94,35 @@ public class BEnvironment {
     }
 
     public static File getSystemDir() {
-        return new File(sVBoxRoot, "system");
+        return new File(getVBoxRoot(), "system");
     }
 
     public static File getProcDir() {
-        return new File(sVBoxRoot, "proc");
+        return new File(getVBoxRoot(), "proc");
     }
 
     public static File getCacheDir() {
-        return new File(sVBoxRoot, "cache");
+        return new File(getVBoxRoot(), "cache");
     }
-    
+
     public static File getUserDir(int userId) {
-        return new File(sVBoxRoot, String.format(Locale.CHINA, "data/user/%d", userId));
+        return new File(getVBoxRoot(), String.format(Locale.CHINA, "data/user/%d", userId));
     }
 
     public static File getDeDataDir(String packageName, int userId) {
-        return new File(sVBoxRoot, String.format(Locale.CHINA, "data/user_de/%d/%s", userId, packageName));
+        return new File(getVBoxRoot(), String.format(Locale.CHINA, "data/user_de/%d/%s", userId, packageName));
     }
-    
+
     public static File getDataDir(String packageName, int userId) {
-        return new File(sVBoxRoot, String.format(Locale.CHINA, "data/user/%d/%s", userId, packageName));
+        return new File(getVBoxRoot(), String.format(Locale.CHINA, "data/user/%d/%s", userId, packageName));
     }
-    
+
     public static File getAppDir(String packageName) {
-        return new File(sVBoxRoot, "data/app/" + packageName);
+        return new File(getVBoxRoot(), "data/app/" + packageName);
     }
 
     public static File getBaseApkDir(String packageName) {
-        return new File(sVBoxRoot, "data/app/" + packageName + "/base.apk");
+        return new File(getVBoxRoot(), "data/app/" + packageName + "/base.apk");
     }
 
     public static File getUserInfoConf() {
@@ -121,28 +148,28 @@ public class BEnvironment {
     public static File getFakeLocationConf() {
         return new File(getSystemDir(), "fake-location.conf");
     }
-    
+
     public static File getFakeDeviceConf() {
         return new File(getSystemDir(), "fake-device.conf");
     }
-    
+
     public static File getPackageConf(String packageName) {
         return new File(getAppDir(packageName), "package.conf");
     }
-    
+
     public static File getExternalStorageDirectory() {
-        if (Build.VERSION.SDK_INT == 29) return new File(sExternalVBoxRoot, "SdCard");
-        return new File(sExternalVBoxRoot, "SdCard");
+        if (Build.VERSION.SDK_INT == 29) return new File(getExternalVBoxRoot(), "SdCard");
+        return new File(getExternalVBoxRoot(), "SdCard");
     }
 
     public static File getExternalDataDir(String packageName) {
-        return new File(getExternalStorageDirectory(),String.format(Locale.CHINA, "Android/data/%s", packageName));
+        return new File(getExternalStorageDirectory(), String.format(Locale.CHINA, "Android/data/%s", packageName));
     }
 
     public static File getExternalObbDir(String packageName) {
-        return new File(getExternalStorageDirectory(),String.format(Locale.CHINA, "Android/obb/%s/", packageName));
+        return new File(getExternalStorageDirectory(), String.format(Locale.CHINA, "Android/obb/%s/", packageName));
     }
-    
+
     public static File getProcDir(int pid) {
         File file = new File(getProcDir(), String.format(Locale.CHINA, "%d", pid));
         FileUtils.mkdirs(file);
@@ -180,10 +207,8 @@ public class BEnvironment {
     public static File getAppLibDir(String packageName) {
         return new File(getAppDir(packageName), "lib");
     }
-    
+
     public static File getXSharedPreferences(String packageName, String prefFileName) {
-		return new File(BEnvironment.getDataDir(packageName, BActivityThread.getUserId()),"shared_prefs/" + prefFileName + ".xml");
-	}
-    
-    
+        return new File(BEnvironment.getDataDir(packageName, BActivityThread.getUserId()), "shared_prefs/" + prefFileName + ".xml");
+    }
 }
