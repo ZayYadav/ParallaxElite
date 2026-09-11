@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.IBinder;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,12 +27,21 @@ public class SystemCallProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        return initSystem();
+        // A transient startup failure must not crash/poison the provider process.
+        // VM calls below will retry initialization when the installer context is ready.
+        initSystemSafely();
+        return true;
     }
 
-    private boolean initSystem() {
-        VBoxSystem.getSystem().startup();
-        return true;
+    private boolean initSystemSafely() {
+        try {
+            VBoxSystem system = VBoxSystem.getSystem();
+            system.startup();
+            return system.isStarted();
+        } catch (Throwable e) {
+            Slog.e(TAG, "System startup failed; keeping provider retryable", e);
+            return false;
+        }
     }
 
     @Nullable
@@ -46,9 +56,17 @@ public class SystemCallProvider extends ContentProvider {
 
         if ("VM".equals(method)) {
             Bundle bundle = new Bundle();
+            if (!VBoxSystem.getSystem().isStarted() && !initSystemSafely()) {
+                return bundle;
+            }
             if (extras != null) {
                 String name = extras.getString("_G_|_server_name_");
-                BundleCompat.putBinder(bundle, "_G_|_server_", ServiceManager.getService(name));
+                if (name != null) {
+                    IBinder binder = ServiceManager.getService(name);
+                    if (binder != null && binder.isBinderAlive()) {
+                        BundleCompat.putBinder(bundle, "_G_|_server_", binder);
+                    }
+                }
             }
             return bundle;
         }
