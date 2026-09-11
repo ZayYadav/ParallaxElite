@@ -19,16 +19,29 @@ import com.parallaxelite.app.BActivityThread;
 import com.parallaxelite.utils.compat.DexFileCompat;
 
 public class VNative {
-    
+
     public static final String TAG = "VNative";
     private static boolean isInjected = false;
     public static String libtarget = "libbgmi.so";
 
     static {
         System.loadLibrary("ParallaxELiteCore");
-        File file = new File(ParallaxELiteInstaller.getContext().getFilesDir(), "loader/" + libtarget);
-        if (file.exists()) {
-            System.load(file.getAbsolutePath());
+
+        // Do not dereference the installer Context unconditionally from a class
+        // initializer. If class loading wins the startup race, an NPE here becomes a
+        // permanent ExceptionInInitializerError for this process.
+        Context context = ParallaxELiteInstaller.getContext();
+        if (context != null) {
+            File file = new File(context.getFilesDir(), "loader/" + libtarget);
+            if (file.exists()) {
+                try {
+                    System.load(file.getAbsolutePath());
+                } catch (Throwable error) {
+                    // ParallaxELiteCore is the SDK runtime. A stale/partial optional
+                    // game payload must not poison the entire virtual process class.
+                    Log.e(TAG, "Unable to load optional game library: " + file, error);
+                }
+            }
         }
     }
 
@@ -36,16 +49,17 @@ public class VNative {
     public static native void enableIO();
     public static native void addIORule(String targetPath, String relocatePath);
     public static native void hideXposed();
-    
+
     @Keep
     public static int getCallingUid(int origCallingUid) {
         if (origCallingUid > 0 && origCallingUid < Process.FIRST_APPLICATION_UID) return origCallingUid;
         if (origCallingUid > Process.LAST_APPLICATION_UID) return origCallingUid;
         if (origCallingUid == ParallaxELiteInstaller.getHostUid()) {
-            if(BActivityThread.getAppPackageName().equals("com.google.android.gms")){
+            String packageName = BActivityThread.getAppPackageName();
+            if ("com.google.android.gms".equals(packageName)) {
                 return Process.ROOT_UID;
             }
-            if(BActivityThread.getAppPackageName().equals("com.google.android.webview")){
+            if ("com.google.android.webview".equals(packageName)) {
                 return Process.myUid();
             }
             return BActivityThread.getCallingBUid();
@@ -55,14 +69,20 @@ public class VNative {
 
     @Keep
     public static String redirectPath(String path) {
+        if (path == null) {
+            return null;
+        }
         return VCore.get().redirectPath(path);
     }
 
     @Keep
     public static File redirectPath(File path) {
+        if (path == null) {
+            return null;
+        }
         return VCore.get().redirectPath(path);
     }
-    
+
     /*
     public void runApk(Context ctx) {
         try {
@@ -104,5 +124,4 @@ public class VNative {
         }
         return sb.toString();
     }*/
-
 }
