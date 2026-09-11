@@ -22,11 +22,9 @@ import java.util.Set;
  * only selects a real browser that advertises Auth Tab support and can handle
  * the requested HTTPS URL.
  *
- * Facebook intentionally mirrors the working ParallaxSDK flow: Chrome is
- * preferred when it advertises normal Auth Tab support for the exact Facebook
- * URL. We do not require EphemeralBrowsing because that extra capability is not
- * part of the working ParallaxSDK chain and causes otherwise compatible Chrome
- * builds to be rejected before Facebook UI can open.
+ * Facebook is deliberately excluded from browser provider selection. Its OAuth
+ * flow is handled by {@link FacebookWebViewActivity}, so a Facebook login can
+ * never inherit or open the device's Chrome profile.
  *
  * The SDK never reads, copies, injects or persists browser/Facebook cookies.
  */
@@ -42,8 +40,6 @@ public final class AuthTabCompat {
             "android.support.customtabs.action.CustomTabsService";
     private static final String CATEGORY_AUTH_TAB =
             "androidx.browser.auth.category.AuthTab";
-    private static final String CHROME_STABLE_PACKAGE = "com.android.chrome";
-
     private AuthTabCompat() {
     }
 
@@ -53,17 +49,13 @@ public final class AuthTabCompat {
             return null;
         }
 
-        PackageManager pm = context.getPackageManager();
-        if (pm == null) {
+        if (FacebookAuthHost.matches(authUri)) {
             return null;
         }
 
-        // Match ParallaxSDK: prefer the real Chrome profile for Facebook when it
-        // supports Auth Tab for this exact URL. This preserves the normal browser
-        // sign-in/session behavior instead of requiring an optional private mode.
-        if (FacebookAuthHost.matches(authUri)
-                && supportsAuthTabProvider(pm, CHROME_STABLE_PACKAGE, authUri)) {
-            return CHROME_STABLE_PACKAGE;
+        PackageManager pm = context.getPackageManager();
+        if (pm == null) {
+            return null;
         }
 
         String defaultBrowser = resolveDefaultBrowser(pm, authUri);
@@ -112,7 +104,8 @@ public final class AuthTabCompat {
     }
 
     public static boolean isSupportedProvider(Context context, String provider, Uri authUri) {
-        if (context == null || provider == null || provider.trim().isEmpty()) {
+        if (context == null || provider == null || provider.trim().isEmpty()
+                || FacebookAuthHost.matches(authUri)) {
             return false;
         }
         String selected = findProvider(context, authUri);

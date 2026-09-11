@@ -51,7 +51,7 @@ Facebook or X and do not use real account credentials.
 ## Device validation still required
 
 Run on the consuming host application with its actual package/signing identity
-and provider configuration. Check Facebook app and browser login; X native,
+and provider configuration. Check Facebook in-app WebView login; X native,
 OAuth1 and OAuth2 login; cancellation; returning from the browser; rotation;
 background/resume; and restarting login after process death. Verify that one
 provider result reaches the original app/user. Repeat on the supported Android

@@ -63,39 +63,29 @@ public class AuthTabCompatTest {
         return service;
     }
 
-    @Test public void facebookUsesNormalParallaxSdkAuthTabAndPreservesUrl() {
-        browser("com.android.chrome", false, FACEBOOK);
-        Intent intent = AuthTabCompat.createLaunchIntent(
-                context, FACEBOOK, "sample", "com.android.chrome");
-        assertTrue(intent.getBooleanExtra(AuthTabCompat.EXTRA_LAUNCH_AUTH_TAB, false));
-        assertEquals(FACEBOOK, intent.getData());
-        assertEquals("sample", intent.getStringExtra(AuthTabCompat.EXTRA_REDIRECT_SCHEME));
-        assertEquals("com.android.chrome", intent.getPackage());
-        assertTrue(intent.hasExtra(AuthTabCompat.EXTRA_CUSTOM_TABS_SESSION));
-        assertNull(intent.getExtras().getBinder(AuthTabCompat.EXTRA_CUSTOM_TABS_SESSION));
+    @Test public void facebookNeverSelectsChromeOrAnotherExternalBrowser() {
+        ResolveInfo chrome = browser("com.android.chrome", true, FACEBOOK);
+        ResolveInfo alternative = browser("example.browser", true, FACEBOOK);
+        pm.addResolveInfoForIntent(new Intent(SERVICE), Arrays.asList(chrome, alternative));
+
+        assertNull(AuthTabCompat.findProvider(context, FACEBOOK));
+        assertFalse(AuthTabCompat.isSupportedProvider(
+                context, "com.android.chrome", FACEBOOK));
+        assertFalse(AuthTabCompat.isSupportedProvider(
+                context, "example.browser", FACEBOOK));
     }
 
-    @Test public void facebookDoesNotRequireEphemeralBrowsingCapability() {
-        browser("com.android.chrome", false, FACEBOOK);
-        assertTrue(AuthTabCompat.isSupportedProvider(context, "com.android.chrome", FACEBOOK));
-        assertEquals("com.android.chrome", AuthTabCompat.findProvider(context, FACEBOOK));
-    }
-
-    @Test public void facebookStillAcceptsBrowserThatAlsoSupportsPrivateMode() {
+    @Test(expected = IllegalStateException.class)
+    public void facebookAuthTabLaunchFailsClosed() {
         browser("com.android.chrome", true, FACEBOOK);
-        assertTrue(AuthTabCompat.isSupportedProvider(context, "com.android.chrome", FACEBOOK));
+        AuthTabCompat.createLaunchIntent(
+                context, FACEBOOK, "sample", "com.android.chrome");
     }
 
-    @Test public void findsNormalAlternativeWhenChromeIsUnavailable() {
-        ResolveInfo alternative = browser("example.browser", false, FACEBOOK);
-        pm.addResolveInfoForIntent(new Intent(SERVICE), Arrays.asList(alternative));
-        assertEquals("example.browser", AuthTabCompat.findProvider(context, FACEBOOK));
-    }
-
-    @Test public void rejectsDisabledAuthTabService() {
-        ResolveInfo service = browser("com.android.chrome", false, FACEBOOK);
+    @Test public void rejectsDisabledAuthTabServiceForOtherProviders() {
+        ResolveInfo service = browser("example.browser", false, TWITTER);
         service.serviceInfo.enabled = false;
-        assertFalse(AuthTabCompat.isSupportedProvider(context, "com.android.chrome", FACEBOOK));
+        assertFalse(AuthTabCompat.isSupportedProvider(context, "example.browser", TWITTER));
     }
 
     @Test public void twitterBehaviorRemainsUnchanged() {
