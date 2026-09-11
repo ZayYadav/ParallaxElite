@@ -7,8 +7,8 @@ import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.IBinder;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.app.BActivityThread;
@@ -28,7 +28,10 @@ import com.parallaxelite.utils.compat.ScopedClassLoader;
  */
 public class AppServiceDispatcher {
     private static final AppServiceDispatcher sServiceDispatcher = new AppServiceDispatcher();
-    private final Map<Intent.FilterComparison, ServiceRecord> mService = new HashMap<>();
+    // Service callbacks normally run on the main thread, but BActivityThread can
+    // issue stop/peek operations from Binder threads. Use a concurrent map so a
+    // lifecycle iteration cannot race with a Binder-side remove/lookup.
+    private final Map<Intent.FilterComparison, ServiceRecord> mService = new ConcurrentHashMap<>();
     private final Handler mHandler = ParallaxELiteInstaller.get().getHandler();
 
     public static AppServiceDispatcher get() {
