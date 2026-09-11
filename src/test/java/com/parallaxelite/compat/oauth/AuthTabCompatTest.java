@@ -35,8 +35,12 @@ public class AuthTabCompatTest {
         context = RuntimeEnvironment.getApplication();
         pm = shadowOf(context.getPackageManager());
     }
+
     private ResolveInfo browser(String name, boolean privateMode, Uri uri) {
-        ApplicationInfo app = new ApplicationInfo(); app.packageName = name; app.enabled = true;
+        ApplicationInfo app = new ApplicationInfo();
+        app.packageName = name;
+        app.enabled = true;
+
         ResolveInfo service = new ResolveInfo();
         service.serviceInfo = new ServiceInfo();
         service.serviceInfo.packageName = name;
@@ -47,8 +51,11 @@ public class AuthTabCompatTest {
         service.filter.addCategory(AUTH);
         if (privateMode) service.filter.addCategory(PRIVATE);
         pm.addResolveInfoForIntent(new Intent(SERVICE).setPackage(name), service);
-        ResolveInfo activity = new ResolveInfo(); activity.activityInfo = new ActivityInfo();
-        activity.activityInfo.packageName = name; activity.activityInfo.name = name + ".TabActivity";
+
+        ResolveInfo activity = new ResolveInfo();
+        activity.activityInfo = new ActivityInfo();
+        activity.activityInfo.packageName = name;
+        activity.activityInfo.name = name + ".TabActivity";
         activity.activityInfo.enabled = activity.activityInfo.exported = true;
         activity.activityInfo.applicationInfo = app;
         Intent view = new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE);
@@ -56,10 +63,10 @@ public class AuthTabCompatTest {
         return service;
     }
 
-    @Test public void facebookLaunchRequestsFreshSessionAndPreservesUrl() {
-        browser("com.android.chrome", true, FACEBOOK);
-        Intent intent = AuthTabCompat.createLaunchIntent(context, FACEBOOK, "sample", "com.android.chrome");
-        assertTrue(intent.getBooleanExtra(AuthTabCompat.EXTRA_ENABLE_EPHEMERAL_BROWSING, false));
+    @Test public void facebookUsesNormalParallaxSdkAuthTabAndPreservesUrl() {
+        browser("com.android.chrome", false, FACEBOOK);
+        Intent intent = AuthTabCompat.createLaunchIntent(
+                context, FACEBOOK, "sample", "com.android.chrome");
         assertTrue(intent.getBooleanExtra(AuthTabCompat.EXTRA_LAUNCH_AUTH_TAB, false));
         assertEquals(FACEBOOK, intent.getData());
         assertEquals("sample", intent.getStringExtra(AuthTabCompat.EXTRA_REDIRECT_SCHEME));
@@ -67,30 +74,37 @@ public class AuthTabCompatTest {
         assertTrue(intent.hasExtra(AuthTabCompat.EXTRA_CUSTOM_TABS_SESSION));
         assertNull(intent.getExtras().getBinder(AuthTabCompat.EXTRA_CUSTOM_TABS_SESSION));
     }
-    @Test public void rejectsSharedSessionOnlyBrowser() {
+
+    @Test public void facebookDoesNotRequireEphemeralBrowsingCapability() {
         browser("com.android.chrome", false, FACEBOOK);
-        assertFalse(AuthTabCompat.isSupportedProvider(context, "com.android.chrome", FACEBOOK));
-        try {
-            AuthTabCompat.createLaunchIntent(context, FACEBOOK, "sample", "com.android.chrome");
-            fail("Must not silently open a shared Facebook session");
-        } catch (IllegalStateException expected) { }
+        assertTrue(AuthTabCompat.isSupportedProvider(context, "com.android.chrome", FACEBOOK));
+        assertEquals("com.android.chrome", AuthTabCompat.findProvider(context, FACEBOOK));
     }
-    @Test public void findsPrivateAlternativeWhenChromeCannotIsolate() {
-        ResolveInfo chrome = browser("com.android.chrome", false, FACEBOOK);
-        ResolveInfo alternative = browser("example.privatebrowser", true, FACEBOOK);
-        pm.addResolveInfoForIntent(new Intent(SERVICE), Arrays.asList(chrome, alternative));
-        assertEquals("example.privatebrowser", AuthTabCompat.findProvider(context, FACEBOOK));
+
+    @Test public void facebookStillAcceptsBrowserThatAlsoSupportsPrivateMode() {
+        browser("com.android.chrome", true, FACEBOOK);
+        assertTrue(AuthTabCompat.isSupportedProvider(context, "com.android.chrome", FACEBOOK));
     }
-    @Test public void rejectsDisabledPrivateService() {
-        ResolveInfo service = browser("com.android.chrome", true, FACEBOOK);
+
+    @Test public void findsNormalAlternativeWhenChromeIsUnavailable() {
+        ResolveInfo alternative = browser("example.browser", false, FACEBOOK);
+        pm.addResolveInfoForIntent(new Intent(SERVICE), Arrays.asList(alternative));
+        assertEquals("example.browser", AuthTabCompat.findProvider(context, FACEBOOK));
+    }
+
+    @Test public void rejectsDisabledAuthTabService() {
+        ResolveInfo service = browser("com.android.chrome", false, FACEBOOK);
         service.serviceInfo.enabled = false;
         assertFalse(AuthTabCompat.isSupportedProvider(context, "com.android.chrome", FACEBOOK));
     }
-    @Test public void twitterBrowserBehaviorDoesNotRequirePrivateCapability() {
+
+    @Test public void twitterBehaviorRemainsUnchanged() {
         ResolveInfo service = browser("example.browser", false, TWITTER);
         pm.addResolveInfoForIntent(new Intent(SERVICE), service);
-        Intent intent = AuthTabCompat.createLaunchIntent(context, TWITTER, "sample", "example.browser");
-        assertFalse(intent.hasExtra(AuthTabCompat.EXTRA_ENABLE_EPHEMERAL_BROWSING));
+        Intent intent = AuthTabCompat.createLaunchIntent(
+                context, TWITTER, "sample", "example.browser");
         assertEquals(TWITTER, intent.getData());
+        assertEquals("example.browser", intent.getPackage());
+        assertTrue(intent.getBooleanExtra(AuthTabCompat.EXTRA_LAUNCH_AUTH_TAB, false));
     }
 }
