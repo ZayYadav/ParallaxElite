@@ -19,7 +19,9 @@ import com.parallaxelite.utils.FileUtils;
 
 /**
  * Detects browser based OAuth launches made by a virtual/cloned application and
- * reroutes only the authentication browser step through an Android Auth Tab.
+ * reroutes the authentication step through a host-controlled bridge. Facebook
+ * stays in an isolated in-app WebView; other supported providers retain their
+ * existing Android Auth Tab behavior.
  *
  * The SDK never reads provider credentials, cookies, passwords, or access tokens.
  * It only carries the final redirect URI back to the virtual package that declared
@@ -99,13 +101,12 @@ public final class VirtualOAuthRouter {
             return null;
         }
 
-        // Do not steal the browser flow unless the real phone has a browser that
-        // explicitly advertises AndroidX Auth Tab support. A normal ACTION_VIEW
-        // browser cannot return arbitrary virtual custom schemes to this SDK.
-        String authProvider = AuthTabCompat.findProvider(
+        // Facebook must never be handed to Chrome (or another external browser).
+        // Other providers still require a verified AndroidX Auth Tab provider.
+        boolean facebookFlow = FacebookAuthHost.matches(authUri);
+        String authProvider = facebookFlow ? null : AuthTabCompat.findProvider(
                 ParallaxELiteInstaller.getContext(), authUri);
-        if ((authProvider == null || authProvider.trim().isEmpty())
-                && !FacebookAuthHost.matches(authUri)) {
+        if (!facebookFlow && (authProvider == null || authProvider.trim().isEmpty())) {
             return null;
         }
 
@@ -117,8 +118,6 @@ public final class VirtualOAuthRouter {
         bridge.putExtra(EXTRA_REDIRECT_URI, redirectUri.toString());
         bridge.putExtra(EXTRA_VIRTUAL_PACKAGE, virtualPackage);
         bridge.putExtra(EXTRA_USER_ID, userId);
-        // Keep unsupported Facebook logins in the host bridge so it can explain
-        // the requirement and cancel, rather than fall through to a shared tab.
         bridge.putExtra(EXTRA_AUTH_PROVIDER, authProvider == null ? "" : authProvider);
         bridge.addFlags(source.getFlags() & (
                 Intent.FLAG_ACTIVITY_NEW_TASK

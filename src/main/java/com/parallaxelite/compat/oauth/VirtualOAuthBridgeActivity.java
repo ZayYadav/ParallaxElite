@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.widget.Toast;
 
 import java.util.Locale;
 
@@ -131,13 +130,9 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         facebookFlow = isFacebookHost(authUri);
         twitterFlow = isTwitterHost(authUri);
         legacyTwitterFlow = twitterFlow && hasQueryParameter(authUri, "oauth_token");
-        if (facebookFlow && !AuthTabCompat.isSupportedProvider(this, authProvider, authUri)) {
-            Toast.makeText(this,
-                    "Private Facebook login needs an updated browser with private Auth Tab support.",
-                    Toast.LENGTH_LONG).show();
-        }
         if (!redirectResolvesToVirtualPackage(redirectUri)
-                || !AuthTabCompat.isSupportedProvider(this, authProvider, authUri)) {
+                || (!facebookFlow
+                    && !AuthTabCompat.isSupportedProvider(this, authProvider, authUri))) {
             diagnostic("setup_rejected", false, false, false, false, false);
             facebookDiagnostic("setup_rejected", RESULT_CANCELED, null, null, false);
             if (resultBridgeMode) {
@@ -165,8 +160,10 @@ public final class VirtualOAuthBridgeActivity extends Activity {
                     return;
                 }
                 facebookDiagnostic("session_started", RESULT_CANCELED, null, null, false);
+                launchFacebookWebView(authUri, expectedRedirectUri);
+            } else {
+                launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
             }
-            launchAuthTab(authUri, lower(expectedRedirectUri.getScheme()), authProvider);
         } else if (facebookFlow) {
             facebookGeneration = savedInstanceState.getLong(STATE_FACEBOOK_GENERATION, 0L);
             if (!FacebookOAuthSessionStore.contains(facebookGeneration)) {
@@ -181,6 +178,21 @@ public final class VirtualOAuthBridgeActivity extends Activity {
             } else if (pendingStage == 1) {
                 waitForFacebookFallback();
             }
+        }
+    }
+
+    private void launchFacebookWebView(Uri authUri, Uri redirectUri) {
+        try {
+            Intent webViewIntent = new Intent(this, FacebookWebViewActivity.class);
+            webViewIntent.putExtra(
+                    FacebookWebViewActivity.EXTRA_AUTH_URL, authUri.toString());
+            webViewIntent.putExtra(
+                    FacebookWebViewActivity.EXTRA_REDIRECT_URI, redirectUri.toString());
+            startActivityForResult(webViewIntent, REQUEST_AUTH_TAB);
+            facebookDiagnostic("webview_launch", RESULT_CANCELED, null, null, false);
+        } catch (Throwable ignored) {
+            facebookDiagnostic("webview_launch_failed", RESULT_CANCELED, null, null, false);
+            failFacebookResult();
         }
     }
 
@@ -354,9 +366,9 @@ public final class VirtualOAuthBridgeActivity extends Activity {
         }
 
         Uri callbackUri = data == null ? null : data.getData();
-        // Some Chrome/Auth Tab builds return a valid redirect URI together with
-        // RESULT_CANCELED. The validated URI/state/target is authoritative for
-        // Facebook only, so accept that shape without weakening other providers.
+        // The callback URI/state/registered target are authoritative for Facebook.
+        // Accept a validated URI even if a WebView implementation reports a
+        // nonstandard result code; no other provider inherits this exception.
         if (callbackUri != null && matchesExpectedCallback(callbackUri)) {
             FacebookOAuthSessionStore.Claim claim =
                     FacebookOAuthSessionStore.claim(callbackUri, facebookGeneration);
@@ -395,10 +407,9 @@ public final class VirtualOAuthBridgeActivity extends Activity {
             return;
         }
 
-        // AndroidX Auth Tab reports RESULT_CANCELED when the expected redirect was
-        // not captured by the browser. Give the host fbconnect receiver a short,
-        // bounded window to validate and relay that callback before propagating a
-        // cancellation to the virtual Facebook SDK.
+        // Give the exported fbconnect receiver a short, bounded window in case a
+        // WebView implementation delegated the custom-scheme redirect to Android
+        // before our WebViewClient observed it.
         facebookDiagnostic("auth_not_completed", resultCode, data, callbackUri, false);
         waitForFacebookFallback();
     }
