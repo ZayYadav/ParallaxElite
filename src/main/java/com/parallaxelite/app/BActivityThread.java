@@ -196,7 +196,10 @@ public class BActivityThread extends IBActivityThread.Stub {
     }
 
     public boolean isInit() {
-        return this.mBoundApplication != null && this.mInitialApplication != null;
+        // mBoundApplication is also the bind-in-progress guard. Failed binds roll it
+        // back to null below, so preserving this original condition prevents a
+        // re-entrant bind from recursively reinitializing the same process.
+        return this.mBoundApplication != null;
     }
 
     public Service createService(ServiceInfo serviceInfo, IBinder token) {
