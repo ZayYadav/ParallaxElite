@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import black.android.app.ActivityThreadAppBindDataContext;
 import black.android.app.BRActivity;
@@ -87,6 +88,7 @@ import org.lsposed.lsparanoid.Obfuscate;
 @Obfuscate
 public class BActivityThread extends IBActivityThread.Stub {
     public static final String TAG = "BActivityThread";
+    private static final long BIND_APPLICATION_TIMEOUT_MS = 30_000L;
     private static final Object mConfigLock = new Object();
     private static volatile BActivityThread sBActivityThread;
     private AppConfig mAppConfig;
@@ -176,19 +178,17 @@ public class BActivityThread extends IBActivityThread.Stub {
             final IBinder iBinder = asBinder();
             try {
                 iBinder.linkToDeath(new IBinder.DeathRecipient() {
-                        @Override
-                        public void binderDied() {
-                            synchronized (BActivityThread.mConfigLock) {
-                                try {
-                                    iBinder.linkToDeath(this, 0);
-                                } catch (RemoteException e) {
-                                    // ignore
-                                }
-                                BActivityThread.this.mAppConfig = null;
+                    @Override
+                    public void binderDied() {
+                        synchronized (BActivityThread.mConfigLock) {
+                            try {
+                                iBinder.unlinkToDeath(this, 0);
+                            } catch (Throwable ignored) {
                             }
+                            BActivityThread.this.mAppConfig = null;
                         }
-                    }, 0);
-
+                    }
+                }, 0);
             } catch (RemoteException e) {
                 Log.e(TAG, "error", e);
             }
@@ -196,7 +196,7 @@ public class BActivityThread extends IBActivityThread.Stub {
     }
 
     public boolean isInit() {
-        return this.mBoundApplication != null;
+        return this.mBoundApplication != null && this.mInitialApplication != null;
     }
 
     public Service createService(ServiceInfo serviceInfo, IBinder token) {
@@ -311,11 +311,35 @@ public class BActivityThread extends IBActivityThread.Stub {
     public void bindApplication(final String packageName, final String processName) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             final ConditionVariable conditionVariable = new ConditionVariable();
-            ParallaxELiteInstaller.get().getHandler().post(() -> {
-                handleBindApplication(packageName, processName);
-                conditionVariable.open();
-            });
-            conditionVariable.block();
+            final AtomicReference<Throwable> bindFailure = new AtomicReference<>();
+            final Runnable bindTask = () -> {
+                try {
+                    handleBindApplication(packageName, processName);
+                } catch (Throwable error) {
+                    bindFailure.set(error);
+                } finally {
+                    // Always release the waiting Binder thread, even if guest
+                    // Application.onCreate()/provider setup throws on the main thread.
+                    conditionVariable.open();
+                }
+            };
+            if (!ParallaxELiteInstaller.get().getHandler().post(bindTask)) {
+                throw new IllegalStateException("Main looper rejected application bind");
+            }
+            if (!conditionVariable.block(BIND_APPLICATION_TIMEOUT_MS)) {
+                ParallaxELiteInstaller.get().getHandler().removeCallbacks(bindTask);
+                throw new IllegalStateException("Timed out binding application: " + packageName);
+            }
+            Throwable failure = bindFailure.get();
+            if (failure != null) {
+                if (failure instanceof Error) {
+                    throw (Error) failure;
+                }
+                if (failure instanceof RuntimeException) {
+                    throw (RuntimeException) failure;
+                }
+                throw new RuntimeException("Unable to bind application " + packageName, failure);
+            }
         } else {
             handleBindApplication(packageName, processName);
         }
@@ -329,59 +353,64 @@ public class BActivityThread extends IBActivityThread.Stub {
         } catch (Throwable ignored) {
         }
         Binder.clearCallingIdentity();
-        PackageInfo packageInfo = ParallaxELiteInstaller.getBPackageManager().getPackageInfo(packageName, PackageManager.GET_PROVIDERS, BActivityThread.getUserId());
-        ApplicationInfo applicationInfo = packageInfo.applicationInfo;
-        if (packageInfo.providers == null) {
-            packageInfo.providers = new ProviderInfo[]{};
-        }
-        mProviders.addAll(Arrays.asList(packageInfo.providers));
-        Object boundApplication = BRActivityThread.get(ParallaxELiteInstaller.mainThread()).mBoundApplication();
-        Context packageContext = createPackageContext(applicationInfo);
-        Object loadedApk = BRContextImpl.get(packageContext).mPackageInfo();
-        installGuestContextClassLoader(loadedApk);
-        BRLoadedApk.get(loadedApk)._set_mSecurityViolation(false);
-        // fix applicationInfo
-        BRLoadedApk.get(loadedApk)._set_mApplicationInfo(applicationInfo);
-        int targetSdkVersion = applicationInfo.targetSdkVersion;
-        if (targetSdkVersion < Build.VERSION_CODES.GINGERBREAD) {
-            StrictMode.ThreadPolicy newPolicy = new StrictMode.ThreadPolicy.Builder(StrictMode.getThreadPolicy()).permitNetwork().build();
-            StrictMode.setThreadPolicy(newPolicy);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            if (targetSdkVersion < Build.VERSION_CODES.N) {
-                StrictModeCompat.disableDeathOnFileUriExposure();
-            }
-        }
-        
-        WebViewProcessCompat.prepare(getUserId(), packageName, processName);
-        
-        VirtualRuntime.setupRuntime(processName, applicationInfo);
-        BRVMRuntime.get(BRVMRuntime.get().getRuntime()).setTargetSdkVersion(applicationInfo.targetSdkVersion);
-        if (BuildCompat.isS()) {
-            BRCompatibility.get().setTargetSdkVersion(applicationInfo.targetSdkVersion);
-        }
-        VNative.init(Build.VERSION.SDK_INT);
-        assert packageContext != null;
-        VCore.get().enableRedirect(packageContext);
-        AppBindData bindData = new AppBindData();
-        bindData.appInfo = applicationInfo;
-        bindData.processName = processName;
-        bindData.info = loadedApk;
-        bindData.providers = mProviders;
-        ActivityThreadAppBindDataContext activityThreadAppBindData = BRActivityThreadAppBindData.get(boundApplication);
-        activityThreadAppBindData._set_instrumentationName(new ComponentName(bindData.appInfo.packageName, Instrumentation.class.getName()));
-        activityThreadAppBindData._set_appInfo(bindData.appInfo);
-        activityThreadAppBindData._set_info(bindData.info);
-        activityThreadAppBindData._set_processName(bindData.processName);
-        activityThreadAppBindData._set_providers(bindData.providers);
-        mBoundApplication = bindData;
-        //ssl适配
-        if (BRNetworkSecurityConfigProvider.getRealClass() != null) {
-            Security.removeProvider("AndroidNSSP");
-            BRNetworkSecurityConfigProvider.get().install(packageContext);
-        }
-        Application application;
         try {
+            PackageInfo packageInfo = ParallaxELiteInstaller.getBPackageManager().getPackageInfo(packageName, PackageManager.GET_PROVIDERS, BActivityThread.getUserId());
+            ApplicationInfo applicationInfo = packageInfo.applicationInfo;
+            if (packageInfo.providers == null) {
+                packageInfo.providers = new ProviderInfo[]{};
+            }
+            // A failed previous bind may have populated this list before throwing.
+            // Keep retries idempotent instead of installing duplicate providers.
+            mProviders.clear();
+            mProviders.addAll(Arrays.asList(packageInfo.providers));
+            Object boundApplication = BRActivityThread.get(ParallaxELiteInstaller.mainThread()).mBoundApplication();
+            Context packageContext = createPackageContext(applicationInfo);
+            Object loadedApk = BRContextImpl.get(packageContext).mPackageInfo();
+            installGuestContextClassLoader(loadedApk);
+            BRLoadedApk.get(loadedApk)._set_mSecurityViolation(false);
+            // fix applicationInfo
+            BRLoadedApk.get(loadedApk)._set_mApplicationInfo(applicationInfo);
+            int targetSdkVersion = applicationInfo.targetSdkVersion;
+            if (targetSdkVersion < Build.VERSION_CODES.GINGERBREAD) {
+                StrictMode.ThreadPolicy newPolicy = new StrictMode.ThreadPolicy.Builder(StrictMode.getThreadPolicy()).permitNetwork().build();
+                StrictMode.setThreadPolicy(newPolicy);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                if (targetSdkVersion < Build.VERSION_CODES.N) {
+                    StrictModeCompat.disableDeathOnFileUriExposure();
+                }
+            }
+
+            WebViewProcessCompat.prepare(getUserId(), packageName, processName);
+
+            VirtualRuntime.setupRuntime(processName, applicationInfo);
+            BRVMRuntime.get(BRVMRuntime.get().getRuntime()).setTargetSdkVersion(applicationInfo.targetSdkVersion);
+            if (BuildCompat.isS()) {
+                BRCompatibility.get().setTargetSdkVersion(applicationInfo.targetSdkVersion);
+            }
+            VNative.init(Build.VERSION.SDK_INT);
+            if (packageContext == null) {
+                throw new IllegalStateException("Unable to create package context for " + packageName);
+            }
+            VCore.get().enableRedirect(packageContext);
+            AppBindData bindData = new AppBindData();
+            bindData.appInfo = applicationInfo;
+            bindData.processName = processName;
+            bindData.info = loadedApk;
+            bindData.providers = mProviders;
+            ActivityThreadAppBindDataContext activityThreadAppBindData = BRActivityThreadAppBindData.get(boundApplication);
+            activityThreadAppBindData._set_instrumentationName(new ComponentName(bindData.appInfo.packageName, Instrumentation.class.getName()));
+            activityThreadAppBindData._set_appInfo(bindData.appInfo);
+            activityThreadAppBindData._set_info(bindData.info);
+            activityThreadAppBindData._set_processName(bindData.processName);
+            activityThreadAppBindData._set_providers(bindData.providers);
+            mBoundApplication = bindData;
+            //ssl适配
+            if (BRNetworkSecurityConfigProvider.getRealClass() != null) {
+                Security.removeProvider("AndroidNSSP");
+                BRNetworkSecurityConfigProvider.get().install(packageContext);
+            }
+            Application application;
             onBeforeCreateApplication(packageName, processName, packageContext);
             application = BRLoadedApk.get(loadedApk).makeApplication(false, null);
             ContextCompat.fix(application);
@@ -395,43 +424,53 @@ public class BActivityThread extends IBActivityThread.Stub {
             // old SingleSignOnActivity, so this preserves Twitter Kit's own token
             // exchange while moving just the authorize UI into the installed X app.
             TwitterKitExternalAppCompat.install(mInitialApplication);
-            List<ProviderInfo> providers;
             installProviders(mInitialApplication, bindData.processName, bindData.providers);
             try {
-				// Preload WebView to avoid "No WebView installed" crash
-		    	new WebView(mInitialApplication).destroy();
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
+                // Preload WebView to avoid "No WebView installed" crash
+                new WebView(mInitialApplication).destroy();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
             try {
-				fixAiLiaoPhoto(mInitialApplication);
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
+                fixAiLiaoPhoto(mInitialApplication);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
             onBeforeApplicationOnCreate(packageName, processName, application);
             AppInstrumentation.get().callApplicationOnCreate(application);
             onAfterApplicationOnCreate(packageName, processName, application);
             HookManager.get().checkEnv(HCallbackStub.class);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Throwable e) {
+            // Do not leave a half-bound process marked as initialized. That turns a
+            // transient startup exception into later null dereferences/stuck services.
+            mBoundApplication = null;
+            mInitialApplication = null;
+            mProviders.clear();
+            Log.e(TAG, "Unable to makeApplication", e);
+            if (e instanceof Error) {
+                throw (Error) e;
+            }
+            if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            }
             throw new RuntimeException("Unable to makeApplication", e);
         }
     }
-    
+
     private void fixAiLiaoPhoto(Application application) throws Throwable {
-		if (application.getPackageName().equals("com.mosheng")) {
-			ClassLoader loader = AppInstrumentation.get().getDelegateAppClassLoader();
-			Class fileProviderClass = loader.loadClass("androidx.core.content.FileProvider");
-			Method parsePathStrategyMethod = fileProviderClass.getDeclaredMethod("getPathStrategy", Context.class, String.class);
-			parsePathStrategyMethod.setAccessible(true);
-			Object pathStrategy = parsePathStrategyMethod.invoke(null, application, "com.mosheng.provider");
-			Field fieldAuthority = pathStrategy.getClass().getDeclaredField("mAuthority");
-			fieldAuthority.setAccessible(true);
+        if (application.getPackageName().equals("com.mosheng")) {
+            ClassLoader loader = AppInstrumentation.get().getDelegateAppClassLoader();
+            Class fileProviderClass = loader.loadClass("androidx.core.content.FileProvider");
+            Method parsePathStrategyMethod = fileProviderClass.getDeclaredMethod("getPathStrategy", Context.class, String.class);
+            parsePathStrategyMethod.setAccessible(true);
+            Object pathStrategy = parsePathStrategyMethod.invoke(null, application, "com.mosheng.provider");
+            Field fieldAuthority = pathStrategy.getClass().getDeclaredField("mAuthority");
+            fieldAuthority.setAccessible(true);
             String newAuthority = "files." + ParallaxELiteInstaller.getHostPkg();
-			fieldAuthority.set(pathStrategy, newAuthority);
-		}
-	}
-    
+            fieldAuthority.set(pathStrategy, newAuthority);
+        }
+    }
+
     private void fixWeChatRecovery(Application app) {
         try {
             Field field = app.getClassLoader().loadClass("com.tencent.recovery.Recovery").getField("context");
@@ -453,11 +492,11 @@ public class BActivityThread extends IBActivityThread.Stub {
             return null;
         }
     }
-    
+
     public Object getPackageInfo() {
         return this.mBoundApplication.info;
     }
-    
+
     private void installProviders(Context context, String processName, List<ProviderInfo> provider) {
         long origId = Binder.clearCallingIdentity();
         try {
@@ -482,7 +521,7 @@ public class BActivityThread extends IBActivityThread.Stub {
             installProvider.invoke(mainThread, context, holder, providerInfo, false, true, true);
         }
     }
-    
+
     public void loadXposed(Context context) {
         String vPackageName = getAppPackageName();
         String vProcessName = getAppProcessName();
