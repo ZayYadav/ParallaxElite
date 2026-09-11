@@ -49,6 +49,7 @@ import com.parallaxelite.core.system.api.MetaActivationManager;
  */
 public class BProcessManagerService implements ISystemService {
     public static final String TAG = "BProcessManager";
+    private static final long PROCESS_INIT_WAIT_MS = 250L;
 
     public static BProcessManagerService sBProcessManagerService = new BProcessManagerService();
     private final Map<Integer, Map<String, ProcessRecord>> mProcessMap = new HashMap<>();
@@ -80,13 +81,20 @@ public class BProcessManagerService implements ISystemService {
             if (bpid == -1) {
                 app = bProcess.get(processName);
                 if (app != null) {
-                    if (app.initLock != null) {
-                        app.initLock.block();
-                    }
-                    if (app.bActivityThread != null
+                    // A valid record is fully initialized before startProcessLocked()
+                    // releases mProcessLock. A still-closed init lock here therefore
+                    // indicates a stale/failed initialization. Never wait forever while
+                    // holding the global process lock.
+                    boolean initFinished = app.initLock == null
+                            || app.initLock.block(PROCESS_INIT_WAIT_MS);
+                    if (initFinished
+                            && app.bActivityThread != null
                             && app.bActivityThread.asBinder() != null
                             && app.bActivityThread.asBinder().isBinderAlive()) {
                         return app;
+                    }
+                    if (!initFinished) {
+                        Log.w(TAG, "Discarding stale process init: " + processName);
                     }
                     bProcess.remove(processName);
                     mPidsSelfLocked.remove(app);
@@ -107,12 +115,25 @@ public class BProcessManagerService implements ISystemService {
 
             bProcess.put(processName, app);
             mPidsSelfLocked.add(app);
-
             mProcessMap.put(buid, bProcess);
-            if (!initAppProcessL(app)) {
-                //init process fail
+
+            boolean initialized = false;
+            try {
+                initialized = initAppProcessL(app);
+            } catch (Throwable e) {
+                Log.e(TAG, "Process initialization failed: " + processName, e);
+            } finally {
+                // Never leave a record with a permanently closed init lock. That used
+                // to turn one transient provider/binder failure into a later deadlock.
+                if (app.initLock != null) {
+                    app.initLock.open();
+                }
+            }
+
+            if (!initialized) {
                 bProcess.remove(processName);
                 mPidsSelfLocked.remove(app);
+                app.kill();
                 app = null;
             } else {
                 app.pid = getPid(ParallaxELiteInstaller.getContext(), ProxyManifest.getProcessName(app.bpid));
@@ -126,42 +147,42 @@ public class BProcessManagerService implements ISystemService {
         if (PermissionUtils.isCheckPermissionRequired(app.info)) {
             String[] permissions = BPackageManagerService.get().getDangerousPermissions(app.info.packageName);
             new Thread(() -> {
-				if (!PermissionUtils.checkPermissions(permissions)) {
-					ConditionVariable permissionLock = new ConditionVariable();
-					startRequestPermission(permissions, permissionLock);
+                if (!PermissionUtils.checkPermissions(permissions)) {
+                    ConditionVariable permissionLock = new ConditionVariable();
+                    startRequestPermission(permissions, permissionLock);
                     // Permission UI can be killed/recreated by the system. Never
                     // leak this helper thread indefinitely if a callback is lost.
-					permissionLock.block(60_000L);
-				}
-			}).start();
+                    permissionLock.block(60_000L);
+                }
+            }).start();
         }
     }
 
     private void startRequestPermission(String[] permissions, final ConditionVariable permissionLock) {
-	   if (permissions == null || permissions.length == 0) {
-		   if (permissionLock != null) {
-			   permissionLock.open();
-		   }
-		   return;
-	   }
-       if (permissionLock == null) {
-           return;
-       }
-       if (ParallaxELiteInstaller.getContext() == null) {
-           permissionLock.open();
-           return;
-       }
-	   PermissionUtils.startRequestPermissions(ParallaxELiteInstaller.getContext(), permissions, new PermissionUtils.CallBack() {
-	   @Override
-	   public boolean onResult(int requestCode, String[] permissions, int[] grantResults) {
-		 try {
-		     return PermissionUtils.isRequestGranted(grantResults);
-			 } finally {
-			 permissionLock.open();
-		     }
-		  }
-	   });
-	}
+        if (permissions == null || permissions.length == 0) {
+            if (permissionLock != null) {
+                permissionLock.open();
+            }
+            return;
+        }
+        if (permissionLock == null) {
+            return;
+        }
+        if (ParallaxELiteInstaller.getContext() == null) {
+            permissionLock.open();
+            return;
+        }
+        PermissionUtils.startRequestPermissions(ParallaxELiteInstaller.getContext(), permissions, new PermissionUtils.CallBack() {
+            @Override
+            public boolean onResult(int requestCode, String[] permissions, int[] grantResults) {
+                try {
+                    return PermissionUtils.isRequestGranted(grantResults);
+                } finally {
+                    permissionLock.open();
+                }
+            }
+        });
+    }
 
     // 20240801 add request permission add end 0
 
@@ -215,42 +236,49 @@ public class BProcessManagerService implements ISystemService {
         return -1;
     }
 
-
     //这里初始化了userinfo
     private boolean initAppProcessL(ProcessRecord record) {
-		Log.d(TAG, "initProcess: " + record.processName);
-		requestPermissionIfNeed(record);
-		AppConfig appConfig = record.getClientConfig();
-		Bundle bundle = new Bundle();
-		bundle.putParcelable(AppConfig.KEY, appConfig);
-		// 🔥 CRASH FIX: Line 209
-		Bundle result;
-		try {
-			result = ProviderCall.callSafely(record.getProviderAuthority(), "_Black_|_init_process_", (String) null, bundle);
-		} catch (Exception e) {
-			Log.e(TAG, "Provider error: " + e.getMessage());
-			result = new Bundle();
-		}
-		IBinder appThread = BundleCompat.getBinder(result, "_Black_|_client_");
-		if (appThread == null || !appThread.isBinderAlive()) {
-			return false;
-		}
-		if (!attachClientL(record, appThread)) {
+        Log.d(TAG, "initProcess: " + record.processName);
+        requestPermissionIfNeed(record);
+        AppConfig appConfig = record.getClientConfig();
+        Bundle bundle = new Bundle();
+        bundle.putParcelable(AppConfig.KEY, appConfig);
+        Bundle result;
+        try {
+            result = ProviderCall.callSafely(record.getProviderAuthority(), "_Black_|_init_process_", (String) null, bundle);
+        } catch (Throwable e) {
+            Log.e(TAG, "Provider error: " + e.getMessage(), e);
             return false;
         }
-		createProc(record);
-		return true;
-	}
+        IBinder appThread = BundleCompat.getBinder(result, "_Black_|_client_");
+        if (appThread == null || !appThread.isBinderAlive()) {
+            return false;
+        }
+        if (!attachClientL(record, appThread)) {
+            return false;
+        }
+        createProc(record);
+        return true;
+    }
 
     private boolean attachClientL(final ProcessRecord app, final IBinder appThread) {
-        IBActivityThread activityThread = IBActivityThread.Stub.asInterface(appThread);
-        if (activityThread == null || appThread == null || !appThread.isBinderAlive()) {
+        if (appThread == null || !appThread.isBinderAlive()) {
             app.kill();
             if (app.initLock != null) {
                 app.initLock.open();
             }
             return false;
         }
+
+        final IBActivityThread activityThread = IBActivityThread.Stub.asInterface(appThread);
+        if (activityThread == null) {
+            app.kill();
+            if (app.initLock != null) {
+                app.initLock.open();
+            }
+            return false;
+        }
+
         try {
             appThread.linkToDeath(new IBinder.DeathRecipient() {
                 @Override
@@ -264,16 +292,42 @@ public class BProcessManagerService implements ISystemService {
                 }
             }, 0);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Client binder died during attach: " + app.processName, e);
+            app.kill();
+            if (app.initLock != null) {
+                app.initLock.open();
+            }
+            return false;
         }
+
         app.bActivityThread = activityThread;
         try {
             app.appThread = ApplicationThreadCompat.asInterface(activityThread.getActivityThread());
         } catch (RemoteException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Unable to obtain application thread: " + app.processName, e);
+            app.bActivityThread = null;
+            app.appThread = null;
+            app.kill();
+            if (app.initLock != null) {
+                app.initLock.open();
+            }
+            return false;
         }
-        app.initLock.open();
-        return app.bActivityThread != null;
+
+        if (!appThread.isBinderAlive()) {
+            app.bActivityThread = null;
+            app.appThread = null;
+            app.kill();
+            if (app.initLock != null) {
+                app.initLock.open();
+            }
+            return false;
+        }
+
+        if (app.initLock != null) {
+            app.initLock.open();
+        }
+        return true;
     }
 
     public void onProcessDie(ProcessRecord record) {
@@ -426,5 +480,4 @@ public class BProcessManagerService implements ISystemService {
     public void systemReady() {
         FileUtils.deleteDir(BEnvironment.getProcDir());
     }
-
 }
