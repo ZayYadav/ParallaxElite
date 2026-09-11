@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.parallaxelite.ParallaxELiteInstaller;
 import com.parallaxelite.core.env.AppSystemEnv;
@@ -29,7 +28,8 @@ public class VBoxSystem {
 
     private static volatile VBoxSystem sVBoxSystem;
     private final List<ISystemService> mServices = new ArrayList<>();
-    private static final AtomicBoolean isStartup = new AtomicBoolean(false);
+    private final Object mStartupLock = new Object();
+    private volatile boolean isStartup;
 
     private VBoxSystem() { }
 
@@ -44,62 +44,88 @@ public class VBoxSystem {
         return sVBoxSystem;
     }
 
+    public boolean isStarted() {
+        return isStartup;
+    }
+
     public void startup() {
-        if (isStartup.getAndSet(true)) {
+        if (isStartup) {
             return;
         }
-        // Load virtual environment
-        BEnvironment.load();
-        // Register core system services
-        mServices.add(BPackageManagerService.get());
-        mServices.add(BUserManagerService.get());
-        mServices.add(BActivityManagerService.get());
-        mServices.add(BJobManagerService.get());
-        mServices.add(BStorageManagerService.get());
-        mServices.add(BPackageInstallerService.get());
-        mServices.add(BXposedManagerService.get());
-        mServices.add(BProcessManagerService.get());
-        mServices.add(BAccountManagerService.get());
-        mServices.add(BLocationManagerService.get());
-        mServices.add(BNotificationManagerService.get());
-        // Notify system ready
-        for (ISystemService service : mServices) {
-            try {
-                service.systemReady();
-            } catch (Throwable ignored) {
-                // Never break virtual startup
+        synchronized (mStartupLock) {
+            if (isStartup) {
+                return;
             }
-        }
 
-        // Pre-install system apps
-        List<String> preInstallPackages = AppSystemEnv.getPreInstallPackages();
-        for (String pkg : preInstallPackages) {
+            // Never publish a half-initialized system. The old getAndSet(true)
+            // marked startup complete before any initialization ran, so one transient
+            // failure could leave the process permanently stuck in a partial state.
+            mServices.clear();
+            boolean success = false;
             try {
-                if (!BPackageManagerService.get().isInstalled(pkg, BUserHandle.USER_ALL)) {
-                    PackageInfo info = ParallaxELiteInstaller.getPackageManager().getPackageInfo(pkg, 0);
-                    BPackageManagerService.get().installPackageAsUser(info.applicationInfo.sourceDir,InstallOption.installBySystem(),BUserHandle.USER_ALL);
+                BEnvironment.load();
+
+                mServices.add(BPackageManagerService.get());
+                mServices.add(BUserManagerService.get());
+                mServices.add(BActivityManagerService.get());
+                mServices.add(BJobManagerService.get());
+                mServices.add(BStorageManagerService.get());
+                mServices.add(BPackageInstallerService.get());
+                mServices.add(BXposedManagerService.get());
+                mServices.add(BProcessManagerService.get());
+                mServices.add(BAccountManagerService.get());
+                mServices.add(BLocationManagerService.get());
+                mServices.add(BNotificationManagerService.get());
+
+                for (ISystemService service : mServices) {
+                    try {
+                        service.systemReady();
+                    } catch (Throwable ignored) {
+                        // One optional subsystem must not take down the whole server.
+                    }
                 }
-            } catch (PackageManager.NameNotFoundException ignored) {
-            } catch (Throwable ignored) {
+
+                // Pre-install system apps. This remains best-effort and does not make
+                // the core service unavailable when one package cannot be resolved.
+                List<String> preInstallPackages = AppSystemEnv.getPreInstallPackages();
+                for (String pkg : preInstallPackages) {
+                    try {
+                        if (!BPackageManagerService.get().isInstalled(pkg, BUserHandle.USER_ALL)) {
+                            PackageInfo info = ParallaxELiteInstaller.getPackageManager().getPackageInfo(pkg, 0);
+                            BPackageManagerService.get().installPackageAsUser(
+                                    info.applicationInfo.sourceDir,
+                                    InstallOption.installBySystem(),
+                                    BUserHandle.USER_ALL);
+                        }
+                    } catch (PackageManager.NameNotFoundException ignored) {
+                    } catch (Throwable ignored) {
+                    }
+                }
+                success = true;
+            } finally {
+                // Publish readiness only after the complete core startup path succeeds.
+                // On failure leave the system retryable instead of permanently wedged.
+                isStartup = success;
+                if (!success) {
+                    mServices.clear();
+                }
             }
         }
-        // Init jar environment (SAFE)
-        //initJarEnv();
     }
-    
+
     private void initJarEnv() {
         // OPTIONAL: junit.jar (ignore if missing)
         try {
             InputStream junit = ParallaxELiteInstaller.getContext().getAssets().open("junit.jar");
-            FileUtils.copyFile(junit,android.MetaCore.RemoteManager.JUNIT_JAR);
+            FileUtils.copyFile(junit, android.MetaCore.RemoteManager.JUNIT_JAR);
         } catch (Throwable ignored) {
-            // junit.jar not present → safe to ignore
+            // junit.jar not present -> safe to ignore
         }
 
         // REQUIRED: empty.jar
         try {
             InputStream empty = ParallaxELiteInstaller.getContext().getAssets().open("empty.jar");
-            FileUtils.copyFile(empty,android.MetaCore.RemoteManager.EMPTY_JAR);
+            FileUtils.copyFile(empty, android.MetaCore.RemoteManager.EMPTY_JAR);
         } catch (Throwable e) {
             // empty.jar missing is a REAL problem
             e.printStackTrace();
