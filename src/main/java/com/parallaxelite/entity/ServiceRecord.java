@@ -5,8 +5,8 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.os.RemoteException;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -18,14 +18,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 此处无Bug
  */
 public class ServiceRecord {
-    private Service mService;
-    private Map<Intent.FilterComparison, BoundInfo> mBounds = new HashMap<>();
-    private boolean rebind;
-    private int mStartId;
+    private volatile Service mService;
+    // Binder death callbacks can arrive on Binder threads while service bind/unbind
+    // runs on the main thread. Never mutate a plain HashMap from both paths.
+    private final Map<Intent.FilterComparison, BoundInfo> mBounds = new ConcurrentHashMap<>();
+    private volatile boolean rebind;
+    private volatile int mStartId;
 
     public class BoundInfo {
-        private IBinder mIBinder;
-        private AtomicInteger mBindCount = new AtomicInteger(0);
+        private volatile IBinder mIBinder;
+        private final AtomicInteger mBindCount = new AtomicInteger(0);
 
         public int incrementAndGetBindCount() {
             return mBindCount.incrementAndGet();
@@ -81,10 +83,6 @@ public class ServiceRecord {
     public void addBinder(Intent intent, final IBinder iBinder) {
         final Intent.FilterComparison filterComparison = new Intent.FilterComparison(intent);
         BoundInfo boundInfo = getOrCreateBoundInfo(intent);
-        if (boundInfo == null) {
-            boundInfo = new BoundInfo();
-            mBounds.put(filterComparison, boundInfo);
-        }
         boundInfo.setIBinder(iBinder);
         if (iBinder == null) {
             return;
@@ -93,12 +91,17 @@ public class ServiceRecord {
             iBinder.linkToDeath(new IBinder.DeathRecipient() {
                 @Override
                 public void binderDied() {
-                    iBinder.unlinkToDeath(this, 0);
+                    try {
+                        iBinder.unlinkToDeath(this, 0);
+                    } catch (Throwable ignored) {
+                    }
                     mBounds.remove(filterComparison);
                 }
             }, 0);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            // The binder died before registration completed. Do not keep a stale
+            // binder in the bound-service cache.
+            mBounds.remove(filterComparison);
         }
     }
 
@@ -113,21 +116,18 @@ public class ServiceRecord {
         if (boundInfo == null)
             return true;
         int i = boundInfo.decrementAndGetBindCount();
-        if (i <= 0) {
-//            mBounds.remove(filterComparison);
-            return true;
-        }
-        return false;
+        return i <= 0;
     }
 
     public BoundInfo getOrCreateBoundInfo(Intent intent) {
         Intent.FilterComparison filterComparison = new Intent.FilterComparison(intent);
         BoundInfo boundInfo = mBounds.get(filterComparison);
-        if (boundInfo == null) {
-            boundInfo = new BoundInfo();
-            mBounds.put(filterComparison, boundInfo);
+        if (boundInfo != null) {
+            return boundInfo;
         }
-        return boundInfo;
+        BoundInfo created = new BoundInfo();
+        BoundInfo existing = mBounds.putIfAbsent(filterComparison, created);
+        return existing != null ? existing : created;
     }
 
     public boolean isRebind() {
